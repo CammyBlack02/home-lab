@@ -1,0 +1,48 @@
+# Build and runtime
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+!gradle/wrapper/gradle-wrapper.jar
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# Secrets and local config (never commit)
+.env
+.env.local
+*.local
+secrets/
+config.local.*
+application-local.properties
+application-local.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend (if using Node later)
+node_modules/
+dist/
+.npm
+
+# Logs
+*.log
+logs/
