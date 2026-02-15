@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class UnifiService {
 
     private static final Logger log = LoggerFactory.getLogger(UnifiService.class);
-    private static final long SESSION_CACHE_MS = 8 * 60 * 1000; // 8 minutes – avoid login on every poll / rate limit
+    private static final long SESSION_CACHE_MS = 24 * 60 * 60 * 1000; // 24 hours – avoid login on every poll when left running
 
     private final HomelabProperties properties;
     private final RestTemplate restTemplate;
@@ -116,7 +116,8 @@ public class UnifiService {
                             cachedCookie = cookieHeader;
                             cachedCsrf = csrfToken;
                             cacheExpiresAt = now + SESSION_CACHE_MS;
-                            log.info("UniFi login ok, session cached for {} min", SESSION_CACHE_MS / 60000);
+                            long cacheMin = SESSION_CACHE_MS / 60_000;
+                            log.info("UniFi login ok, session cached for {}", cacheMin >= 60 ? (cacheMin / 60) + " h" : cacheMin + " min");
                             break;
                         }
                     } catch (Exception e) {
