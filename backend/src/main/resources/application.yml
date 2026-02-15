@@ -9,9 +9,10 @@ spring:
 homelab:
   server-agent-url: http://localhost:5000    # when backend runs on server; use http://192.168.3.98:5000 when on Bazzite
   desktop-agent-url: http://192.168.0.235:5001  # when backend runs on Bazzite; use Bazzite IP when backend on server
+  # Unifi Controller – set in application-local.yml so credentials are not committed
   unifi:
     enabled: false
-    base-url:
-    username:
-    password:
-    use-unifi-os: false
+    base-url: ""       # e.g. https://192.168.1.1:8443 (Network App) or https://192.168.1.1 (UniFi OS)
+    username: ""
+    password: ""
+    use-unifi-os: false   # true for UDM/UniFi OS; false for standalone UniFi Network Application

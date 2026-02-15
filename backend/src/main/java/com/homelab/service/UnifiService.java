@@ -1,10 +1,18 @@
 package com.homelab.service;
 
 import com.homelab.config.HomelabProperties;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.springframework.http.*;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import javax.net.ssl.SSLContext;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -12,10 +20,33 @@ import java.util.stream.Collectors;
 public class UnifiService {
 
     private final HomelabProperties properties;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     public UnifiService(HomelabProperties properties) {
         this.properties = properties;
+        this.restTemplate = createUnifiRestTemplate();
+    }
+
+    /** RestTemplate that accepts self-signed certs (for local Unifi controller). Use only for internal homelab. */
+    private static RestTemplate createUnifiRestTemplate() {
+        try {
+            SSLContext ssl = SSLContextBuilder.create()
+                    .loadTrustMaterial(null, (chain, authType) -> true)
+                    .build();
+            SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(ssl);
+            HttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder.create()
+                    .setSSLSocketFactory(sslSocketFactory)
+                    .build();
+            CloseableHttpClient httpClient = HttpClients.custom()
+                    .setConnectionManager(cm)
+                    .build();
+            HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
+            factory.setConnectTimeout(java.time.Duration.ofSeconds(5));
+            factory.setReadTimeout(java.time.Duration.ofSeconds(10));
+            return new RestTemplate(factory);
+        } catch (Exception e) {
+            return new RestTemplate();
+        }
     }
 
     /**
@@ -24,7 +55,8 @@ public class UnifiService {
     public Map<String, Object> getDevices() {
         HomelabProperties.Unifi u = properties.getUnifi();
         if (!u.isEnabled() || u.getBaseUrl() == null || u.getBaseUrl().isBlank()
-                || u.getUsername() == null || u.getPassword() == null) {
+                || u.getUsername() == null || u.getUsername().isBlank()
+                || u.getPassword() == null || u.getPassword().isBlank()) {
             return null;
         }
         String base = u.getBaseUrl().replaceAll("/$", "");

@@ -33,6 +33,28 @@ Create `src/main/resources/application-local.yml` (do not commit) or set env var
 
 If an agent URL or Unifi is missing or unreachable, the API falls back to mock data.
 
+### Enabling Unifi (real devices on the dashboard)
+
+1. **Do not put credentials in `application.yml`** – use `src/main/resources/application-local.yml` (add to `.gitignore` if you like).
+
+2. **Create or edit `application-local.yml`** with:
+
+   ```yaml
+   homelab:
+     unifi:
+       enabled: true
+       base-url: https://YOUR_CONTROLLER_IP:8443   # or https://YOUR_UDM_IP for UniFi OS (no port)
+       username: your_admin_username
+       password: your_admin_password
+       use-unifi-os: false   # true if you have a UDM / UniFi OS device; false for standalone Network Application
+   ```
+
+3. **Base URL:**
+   - **UniFi Network Application** (standalone controller): `https://192.168.x.x:8443`
+   - **UniFi OS** (UDM, Dream Machine, etc.): `https://192.168.x.x` (port 443, often omit `:443`)
+
+4. **Restart the backend** and open the Devices card – it should list clients from the default site. Self-signed controller certificates are accepted (for homelab use only).
+
 ## Build JAR (for deployment)
 
 ```bash
