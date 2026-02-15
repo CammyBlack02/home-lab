@@ -350,6 +350,43 @@
         .govee-view-toggle button.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
         .govee-compact-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
         .govee-compact-row span:last-child { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem; }
+        /* Mobile: vertical-only scroll, stacked layouts */
+        @media (max-width: 768px) {
+            body { overflow-x: hidden; }
+            .modal-overlay { padding: 0.5rem; align-items: flex-start; }
+            .modal-panel {
+                max-width: 100%; min-width: 0; width: 100%;
+                overflow-x: hidden; overflow-y: auto;
+                max-height: calc(100vh - 1rem);
+            }
+            .modal-panel.wide { min-width: 0; max-width: 100%; }
+            .modal-panel table { display: block; }
+            .modal-panel thead { display: none; }
+            .modal-panel tbody { display: block; }
+            .modal-panel tr {
+                display: block;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                padding: 0.75rem 0;
+                margin-bottom: 0.5rem;
+            }
+            .modal-panel td {
+                display: block;
+                padding: 0.35rem 0;
+                border: none;
+            }
+            .modal-panel td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: var(--muted);
+                display: inline-block;
+                min-width: 6rem;
+                margin-right: 0.5rem;
+            }
+            .modal-panel td .govee-btn,
+            .modal-panel td input[type="range"] { margin: 0.2rem 0.2rem 0.2rem 0; }
+            .govee-compact-row { flex-direction: column; align-items: stretch; }
+            .govee-compact-row span:last-child { justify-content: flex-start; }
+        }
     </style>
 </head>
 <body>
@@ -597,7 +634,7 @@
                     <table>
                         <thead><tr><th>Name</th><th>IP</th><th>MAC</th><th>Status</th></tr></thead>
                         <tbody>
-                            ${(d.devices || []).map(dev => '<tr><td>' + dev.name + '</td><td>' + dev.ip + '</td><td>' + (dev.mac || '—') + '</td><td><span class="status ' + dev.status + '"></span>' + dev.status + '</td></tr>').join('')}
+                            ${(d.devices || []).map(dev => '<tr><td data-label="Name">' + dev.name + '</td><td data-label="IP">' + dev.ip + '</td><td data-label="MAC">' + (dev.mac || '—') + '</td><td data-label="Status"><span class="status ' + dev.status + '"></span>' + dev.status + '</td></tr>').join('')}
                         </tbody>
                     </table>
                     <div class="detail-row" style="margin-top:0.5rem"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
@@ -661,7 +698,7 @@
                                     + '<button type="button" class="govee-btn govee-temp" data-device="' + deviceId + '" data-model="' + modelId + '" data-k="4000">Neutral</button>'
                                     + '<button type="button" class="govee-btn govee-temp" data-device="' + deviceId + '" data-model="' + modelId + '" data-k="6500">Cool</button>'
                                     : '—';
-                                return '<tr><td>' + (dev.name || '—') + '</td><td>' + (dev.model || '—') + '</td><td>' + (dev.type || '—') + '</td><td>' + (dev.ip || '—') + '</td><td>' + (dev.controllable ? 'Yes' : 'No') + '</td><td>' + onOff + '</td><td>' + brightness + '</td><td>' + color + '</td><td>' + temp + '</td></tr>';
+                                return '<tr><td data-label="Name">' + (dev.name || '—') + '</td><td data-label="Model">' + (dev.model || '—') + '</td><td data-label="Type">' + (dev.type || '—') + '</td><td data-label="IP">' + (dev.ip || '—') + '</td><td data-label="Controllable">' + (dev.controllable ? 'Yes' : 'No') + '</td><td data-label="On/Off">' + onOff + '</td><td data-label="Brightness">' + brightness + '</td><td data-label="Color">' + color + '</td><td data-label="Temp">' + temp + '</td></tr>';
                             }).join('')}
                         </tbody>
                     </table>
