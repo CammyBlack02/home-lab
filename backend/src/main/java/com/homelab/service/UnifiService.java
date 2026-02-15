@@ -60,9 +60,11 @@ public class UnifiService {
         if (!u.isEnabled() || u.getBaseUrl() == null || u.getBaseUrl().isBlank()
                 || u.getUsername() == null || u.getUsername().isBlank()
                 || u.getPassword() == null || u.getPassword().isBlank()) {
+            log.warn("UniFi skipped: enabled={}, baseUrl set={}. Create application-local.yml with unifi config.", u.isEnabled(), u.getBaseUrl() != null && !u.getBaseUrl().isBlank());
             return null;
         }
         String base = u.getBaseUrl().replaceAll("/$", "");
+        log.info("UniFi: attempting login to {} (use-unifi-os={})", base, u.isUseUnifiOs());
         String clientsPath = u.isUseUnifiOs() ? "/proxy/network/api/s/default/stat/sta" : "/api/s/default/stat/sta";
 
         try {
@@ -76,23 +78,38 @@ public class UnifiService {
                     : new String[]{"/api/login"};
             String cookieHeader = null;
             String csrfToken = null;
-            ResponseEntity<Map> loginResp = null;
             for (String loginPath : loginPaths) {
-                loginResp = restTemplate.exchange(
-                        base + loginPath,
-                        HttpMethod.POST,
-                        new HttpEntity<>(body, loginHeaders),
-                        Map.class
-                );
-                List<String> setCookies = loginResp.getHeaders().get(HttpHeaders.SET_COOKIE);
+                ResponseEntity<String> loginRespStr;
+                try {
+                    loginRespStr = restTemplate.exchange(
+                            base + loginPath,
+                            HttpMethod.POST,
+                            new HttpEntity<>(body, loginHeaders),
+                            String.class
+                    );
+                } catch (Exception e) {
+                    log.warn("UniFi login request failed for {}: {}", base + loginPath, e.getMessage());
+                    continue;
+                }
+                HttpHeaders respHeaders = loginRespStr.getHeaders();
+                List<String> setCookies = respHeaders.get(HttpHeaders.SET_COOKIE);
+                if (setCookies == null) setCookies = respHeaders.get("Set-Cookie");
+                if (setCookies == null) setCookies = respHeaders.get("set-cookie");
                 if (setCookies != null && !setCookies.isEmpty()) {
-                    // Cookie header: name=value only; Set-Cookie can include Path, HttpOnly, etc.
-                    cookieHeader = setCookies.stream()
-                            .map(s -> s.contains(";") ? s.substring(0, s.indexOf(';')).trim() : s.trim())
+                    // Cookie header: name=value only; UDR may send duplicate TOKEN, keep last per name
+                    Map<String, String> cookiePairs = new LinkedHashMap<>();
+                    for (String s : setCookies) {
+                        String nv = s.contains(";") ? s.substring(0, s.indexOf(';')).trim() : s.trim();
+                        int eq = nv.indexOf('=');
+                        if (eq > 0) cookiePairs.put(nv.substring(0, eq).trim(), nv.substring(eq + 1).trim());
+                    }
+                    cookieHeader = cookiePairs.entrySet().stream()
+                            .map(e -> e.getKey() + "=" + e.getValue())
                             .collect(Collectors.joining("; "));
                     // UniFi OS may require CSRF token on subsequent requests
-                    csrfToken = loginResp.getHeaders().getFirst("X-CSRF-Token");
-                    if (csrfToken == null) csrfToken = loginResp.getHeaders().getFirst("X-Updated-Csrf-Token");
+                    csrfToken = respHeaders.getFirst("X-CSRF-Token");
+                    if (csrfToken == null) csrfToken = respHeaders.getFirst("X-Updated-Csrf-Token");
+                    log.info("UniFi login ok, cookie present, csrf={}", csrfToken != null);
                     break;
                 }
             }
