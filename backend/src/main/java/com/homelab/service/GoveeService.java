@@ -143,7 +143,7 @@ public class GoveeService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         String lastMessage = null;
 
-        // Open API: POST with requestId + payload (sku, device, capability)
+        // Open API: POST with requestId + payload (sku, device, capability). powerSwitch value: 0=off, 1=on.
         if ("turn".equals(cmdName)) {
             int value = "on".equals(String.valueOf(cmdValue).toLowerCase()) ? 1 : 0;
             Map<String, Object> capability = new HashMap<>();
@@ -167,7 +167,7 @@ public class GoveeService {
                 }
                 if (res != null) {
                     lastMessage = String.valueOf(res.get("message"));
-                    log.warn("Govee control (openapi): code={}, message={}", res.get("code"), lastMessage);
+                    log.warn("Govee control (openapi): code={}, message={}, body={}", res.get("code"), lastMessage, res);
                 }
             } catch (Exception e) {
                 lastMessage = e.getMessage();
@@ -299,6 +299,7 @@ public class GoveeService {
                 Map<String, Object> dev = (Map<String, Object>) o;
                 String device = (String) dev.get("device");
                 String model = (String) dev.get("model");
+                if (model == null || model.isBlank()) model = (String) dev.get("sku");
                 String name = (String) dev.get("deviceName");
                 Object supportCmds = dev.get("supportCmds");
                 Object capabilities = dev.get("capabilities");
