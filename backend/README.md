@@ -74,19 +74,20 @@ The dashboard shows live speed test results when a Speedtest CLI is installed. T
 
 ### Phase 3 – Govee (lights, plugs, appliances)
 
-The dashboard can list your Govee Wi‑Fi devices (lights, plugs, switches, and appliances) via the [Govee Developer API](https://developer.govee.com/).
+The dashboard can list Govee devices in two ways:
 
-1. **Get an API key:** In the Govee Home app go to **Profile → Settings → Apply for API Key**, submit the form, and use the key sent to your email.
-2. **Config** (in `application-local.yml`, do not commit):
-   ```yaml
-   homelab:
-     govee:
-       enabled: true
-       api-key: "YOUR_GOVEE_API_KEY"
-   ```
-3. Restart the backend. The **Govee** card shows device count and names; click for a table (name, model, type, controllable). If Govee is disabled or the API key is missing/invalid, the card shows an error.
+- **Cloud API:** needs an API key from the Govee Home app (Profile → Settings → Apply for API Key). Returns devices linked to that account.
+- **LAN discovery:** no API key. Discovers devices on the **same network** as the backend. In the Govee Home app, open each device → **Settings** → turn **LAN** on. See [Govee WLAN guide](https://app-h5.govee.com/user-manual/wlan-guide).
 
-Rate limits apply (see Govee docs); the dashboard only fetches the device list on each poll (every 5s).
+**Config** (in `application-local.yml`, do not commit):
+```yaml
+homelab:
+  govee:
+    enabled: true
+    api-key: ""                    # optional; omit or leave blank for LAN-only
+    lan-discovery-enabled: true    # default; discover devices on LAN via UDP multicast
+```
+Restart the backend. The **Govee** card shows devices from cloud (if API key set) and/or LAN. Click the card for a table (name, model, type, IP for LAN, controllable). LAN discovery uses multicast `239.255.255.250:4001` and listens on UDP port 4002; ensure the backend host can send/receive on those.
 
 ## Next steps (you)
 

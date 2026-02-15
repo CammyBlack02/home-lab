@@ -47,6 +47,7 @@ public class HomelabProperties {
     public static class Govee {
         private boolean enabled;
         private String apiKey;
+        private boolean lanDiscoveryEnabled = true;
 
         public boolean isEnabled() {
             return enabled;
@@ -62,6 +63,14 @@ public class HomelabProperties {
 
         public void setApiKey(String apiKey) {
             this.apiKey = apiKey;
+        }
+
+        public boolean isLanDiscoveryEnabled() {
+            return lanDiscoveryEnabled;
+        }
+
+        public void setLanDiscoveryEnabled(boolean lanDiscoveryEnabled) {
+            this.lanDiscoveryEnabled = lanDiscoveryEnabled;
         }
     }
 

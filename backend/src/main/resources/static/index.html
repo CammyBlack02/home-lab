@@ -269,9 +269,9 @@
                 title.textContent = 'Govee – ' + (d.total ?? 0) + ' devices';
                 body.innerHTML = `
                     <table>
-                        <thead><tr><th>Name</th><th>Model</th><th>Type</th><th>Controllable</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Model</th><th>Type</th><th>IP</th><th>Controllable</th></tr></thead>
                         <tbody>
-                            ${(d.devices || []).map(dev => '<tr><td>' + (dev.name || '—') + '</td><td>' + (dev.model || '—') + '</td><td>' + (dev.type || '—') + '</td><td>' + (dev.controllable ? 'Yes' : 'No') + '</td></tr>').join('')}
+                            ${(d.devices || []).map(dev => '<tr><td>' + (dev.name || '—') + '</td><td>' + (dev.model || '—') + '</td><td>' + (dev.type || '—') + '</td><td>' + (dev.ip || '—') + '</td><td>' + (dev.controllable ? 'Yes' : 'No') + '</td></tr>').join('')}
                         </tbody>
                     </table>
                     <div class="detail-row" style="margin-top:0.5rem"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>

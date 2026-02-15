@@ -25,7 +25,7 @@ public class GoveeController {
         }
         return Map.of(
                 "error", true,
-                "message", "Govee unreachable. Enable Govee in config and set API key (Govee Home App → Apply for API Key)."
+                "message", "Govee disabled. Set homelab.govee.enabled=true (and optionally API key for cloud, or use LAN discovery)."
         );
     }
 }

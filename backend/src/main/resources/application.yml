@@ -19,4 +19,5 @@ homelab:
   # Govee (lights, plugs, appliances) – set in application-local.yml; API key from Govee Home App
   govee:
     enabled: true
-    api-key: "37dca413-bc97-48861-8424-5cecf8773760"
+    api-key: ""
+    lan-discovery-enabled: true   # discover devices on LAN (Govee app: device Settings → LAN on)
