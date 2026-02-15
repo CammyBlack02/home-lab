@@ -143,23 +143,15 @@ public class GoveeService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         String lastMessage = null;
 
-        // Open API: POST with requestId + payload (sku, device, capability). powerSwitch value: 0=off, 1=on.
-        if ("turn".equals(cmdName)) {
-            int value = "on".equals(String.valueOf(cmdValue).toLowerCase()) ? 1 : 0;
-            Map<String, Object> capability = new HashMap<>();
-            capability.put("type", "devices.capabilities.on_off");
-            capability.put("instance", "powerSwitch");
-            capability.put("value", value);
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("sku", model);
-            payload.put("device", device);
-            payload.put("capability", capability);
-            Map<String, Object> openBody = new HashMap<>();
-            openBody.put("requestId", UUID.randomUUID().toString());
-            openBody.put("payload", payload);
-            HttpEntity<Map<String, Object>> openEntity = new HttpEntity<>(openBody, headers);
+        // Open API: POST with requestId + payload (sku, device, capability).
+        Map<String, Object> capability = buildOpenApiCapability(cmdName, cmdValue);
+        if (capability != null) {
             try {
-                ResponseEntity<Map> response = restTemplate.exchange(OPENAPI_CONTROL_URL, HttpMethod.POST, openEntity, Map.class);
+                ResponseEntity<Map> response = restTemplate.exchange(
+                        OPENAPI_CONTROL_URL,
+                        HttpMethod.POST,
+                        new HttpEntity<>(openApiControlBody(device, model, capability), headers),
+                        Map.class);
                 Map<String, Object> res = response.getBody();
                 if (res != null && isCode200(res.get("code"))) {
                     out.put("success", true);
@@ -201,6 +193,100 @@ public class GoveeService {
         }
         out.put("message", lastMessage != null && !lastMessage.isEmpty() ? lastMessage : "Control failed (check API key and device support)");
         return out;
+    }
+
+    private static Map<String, Object> openApiControlBody(String device, String model, Map<String, Object> capability) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("sku", model);
+        payload.put("device", device);
+        payload.put("capability", capability);
+        Map<String, Object> body = new HashMap<>();
+        body.put("requestId", UUID.randomUUID().toString());
+        body.put("payload", payload);
+        return body;
+    }
+
+    /**
+     * Build Open API capability map for turn, brightness, color (colorRgb), colorTem (colorTemperatureK). Returns null if not supported.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> buildOpenApiCapability(String cmdName, Object cmdValue) {
+        if (cmdName == null) return null;
+        switch (cmdName) {
+            case "turn": {
+                int value = "on".equals(String.valueOf(cmdValue).toLowerCase()) ? 1 : 0;
+                Map<String, Object> cap = new HashMap<>();
+                cap.put("type", "devices.capabilities.on_off");
+                cap.put("instance", "powerSwitch");
+                cap.put("value", value);
+                return cap;
+            }
+            case "brightness": {
+                int v = toInt(cmdValue, 50);
+                int value = Math.max(0, Math.min(100, v));
+                Map<String, Object> cap = new HashMap<>();
+                cap.put("type", "devices.capabilities.brightness");
+                cap.put("instance", "brightness");
+                cap.put("value", value);
+                return cap;
+            }
+            case "color": {
+                int rgb = parseRgb(cmdValue);
+                if (rgb < 0) return null;
+                Map<String, Object> cap = new HashMap<>();
+                cap.put("type", "devices.capabilities.color_setting");
+                cap.put("instance", "colorRgb");
+                cap.put("value", rgb);
+                return cap;
+            }
+            case "colorTem": {
+                int k = toInt(cmdValue, 4000);
+                int value = Math.max(2000, Math.min(9000, k));
+                Map<String, Object> cap = new HashMap<>();
+                cap.put("type", "devices.capabilities.color_setting");
+                cap.put("instance", "colorTemperatureK");
+                cap.put("value", value);
+                return cap;
+            }
+            default:
+                return null;
+        }
+    }
+
+    private static int toInt(Object o, int defaultVal) {
+        if (o == null) return defaultVal;
+        if (o instanceof Number) return ((Number) o).intValue();
+        try {
+            return Integer.parseInt(String.valueOf(o));
+        } catch (NumberFormatException e) {
+            return defaultVal;
+        }
+    }
+
+    /** Parse RGB from { r, g, b } map or hex number. Returns (r<<16)|(g<<8)|b or -1 if invalid. */
+    private static int parseRgb(Object cmdValue) {
+        if (cmdValue instanceof Map) {
+            Map<?, ?> m = (Map<?, ?>) cmdValue;
+            int r = toInt(m.get("r"), 255);
+            int g = toInt(m.get("g"), 255);
+            int b = toInt(m.get("b"), 255);
+            r = Math.max(0, Math.min(255, r));
+            g = Math.max(0, Math.min(255, g));
+            b = Math.max(0, Math.min(255, b));
+            return (r << 16) | (g << 8) | b;
+        }
+        if (cmdValue instanceof Number) return ((Number) cmdValue).intValue();
+        if (cmdValue != null) {
+            try {
+                String s = String.valueOf(cmdValue).trim();
+                if (s.startsWith("0x") || s.startsWith("#")) {
+                    s = s.replace("#", "");
+                    return (int) Long.parseLong(s, 16);
+                }
+                return Integer.parseInt(s);
+            } catch (NumberFormatException ignored) { }
+        }
+        return -1;
     }
 
     /**

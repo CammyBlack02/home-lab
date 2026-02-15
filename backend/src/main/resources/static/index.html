@@ -272,15 +272,28 @@
                 const escapeAttr = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 body.innerHTML = `
                     <table>
-                        <thead><tr><th>Name</th><th>Model</th><th>Type</th><th>IP</th><th>Controllable</th><th>Control</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Model</th><th>Type</th><th>IP</th><th>Controllable</th><th>On/Off</th><th>Brightness</th><th>Color</th><th>Temp</th></tr></thead>
                         <tbody>
                             ${(d.devices || []).map(dev => {
                                 const deviceId = escapeAttr(dev.device);
                                 const modelId = escapeAttr(dev.model);
-                                const actions = dev.controllable && dev.type !== 'lan'
+                                const canControl = dev.controllable && dev.type !== 'lan';
+                                const onOff = canControl
                                     ? '<button type="button" class="govee-btn govee-on" data-device="' + deviceId + '" data-model="' + modelId + '">On</button><button type="button" class="govee-btn govee-off" data-device="' + deviceId + '" data-model="' + modelId + '">Off</button>'
                                     : '—';
-                                return '<tr><td>' + (dev.name || '—') + '</td><td>' + (dev.model || '—') + '</td><td>' + (dev.type || '—') + '</td><td>' + (dev.ip || '—') + '</td><td>' + (dev.controllable ? 'Yes' : 'No') + '</td><td>' + actions + '</td></tr>';
+                                const brightness = canControl ? '<input type="range" min="0" max="100" value="50" class="govee-brightness" data-device="' + deviceId + '" data-model="' + modelId + '" title="Brightness">' : '—';
+                                const color = canControl
+                                    ? '<button type="button" class="govee-btn govee-color" data-device="' + deviceId + '" data-model="' + modelId + '" data-r="255" data-g="255" data-b="255" title="White">W</button>'
+                                    + '<button type="button" class="govee-btn govee-color" data-device="' + deviceId + '" data-model="' + modelId + '" data-r="255" data-g="0" data-b="0" title="Red">R</button>'
+                                    + '<button type="button" class="govee-btn govee-color" data-device="' + deviceId + '" data-model="' + modelId + '" data-r="0" data-g="255" data-b="0" title="Green">G</button>'
+                                    + '<button type="button" class="govee-btn govee-color" data-device="' + deviceId + '" data-model="' + modelId + '" data-r="0" data-g="0" data-b="255" title="Blue">B</button>'
+                                    : '—';
+                                const temp = canControl
+                                    ? '<button type="button" class="govee-btn govee-temp" data-device="' + deviceId + '" data-model="' + modelId + '" data-k="2700">Warm</button>'
+                                    + '<button type="button" class="govee-btn govee-temp" data-device="' + deviceId + '" data-model="' + modelId + '" data-k="4000">Neutral</button>'
+                                    + '<button type="button" class="govee-btn govee-temp" data-device="' + deviceId + '" data-model="' + modelId + '" data-k="6500">Cool</button>'
+                                    : '—';
+                                return '<tr><td>' + (dev.name || '—') + '</td><td>' + (dev.model || '—') + '</td><td>' + (dev.type || '—') + '</td><td>' + (dev.ip || '—') + '</td><td>' + (dev.controllable ? 'Yes' : 'No') + '</td><td>' + onOff + '</td><td>' + brightness + '</td><td>' + color + '</td><td>' + temp + '</td></tr>';
                             }).join('')}
                         </tbody>
                     </table>
@@ -288,6 +301,12 @@
                 `;
                 body.querySelectorAll('.govee-on').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); goveeControl(btn.dataset.device, btn.dataset.model, 'turn', 'on'); }));
                 body.querySelectorAll('.govee-off').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); goveeControl(btn.dataset.device, btn.dataset.model, 'turn', 'off'); }));
+                body.querySelectorAll('.govee-brightness').forEach(inp => inp.addEventListener('change', (e) => { e.stopPropagation(); goveeControl(inp.dataset.device, inp.dataset.model, 'brightness', parseInt(inp.value, 10)); }));
+                body.querySelectorAll('.govee-color').forEach(btn => btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    goveeControl(btn.dataset.device, btn.dataset.model, 'color', { r: parseInt(btn.dataset.r, 10), g: parseInt(btn.dataset.g, 10), b: parseInt(btn.dataset.b, 10) });
+                }));
+                body.querySelectorAll('.govee-temp').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); goveeControl(btn.dataset.device, btn.dataset.model, 'colorTem', parseInt(btn.dataset.k, 10)); }));
             }
             modal.classList.add('open');
         }
