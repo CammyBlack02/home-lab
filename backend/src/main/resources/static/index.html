@@ -98,6 +98,109 @@
         }
         [data-theme="retro"] .modal-panel th { color: #000; }
         [data-theme="retro"] .modal-panel .detail-row span:last-child { color: #000; }
+        /* Solarized Dark */
+        [data-theme="solarized"] {
+            --bg: #002b36;
+            --card: #073642;
+            --text: #839496;
+            --muted: #586e75;
+            --accent: #268bd2;
+            --ok: #859900;
+            --warn: #b58900;
+            --card-border: rgba(131,148,150,0.2);
+            --card-hover: #268bd2;
+            --modal-overlay: rgba(0,43,54,0.9);
+            --font: system-ui, sans-serif;
+        }
+        /* Dracula */
+        [data-theme="dracula"] {
+            --bg: #282a36;
+            --card: #44475a;
+            --text: #f8f8f2;
+            --muted: #6272a4;
+            --accent: #bd93f9;
+            --ok: #50fa7b;
+            --warn: #f1fa8c;
+            --card-border: rgba(98,114,164,0.4);
+            --card-hover: #bd93f9;
+            --modal-overlay: rgba(40,42,54,0.85);
+            --font: system-ui, sans-serif;
+        }
+        /* Nord */
+        [data-theme="nord"] {
+            --bg: #2e3440;
+            --card: #3b4252;
+            --text: #eceff4;
+            --muted: #88c0d0;
+            --accent: #5e81ac;
+            --ok: #a3be8c;
+            --warn: #ebcb8b;
+            --card-border: rgba(136,192,208,0.25);
+            --card-hover: #5e81ac;
+            --modal-overlay: rgba(46,52,64,0.9);
+            --font: system-ui, sans-serif;
+        }
+        /* AMOLED */
+        [data-theme="amoled"] {
+            --bg: #000000;
+            --card: #0a0a0a;
+            --text: #e0e0e0;
+            --muted: #606060;
+            --accent: #6c5ce7;
+            --ok: #00e676;
+            --warn: #ffab00;
+            --card-border: rgba(255,255,255,0.06);
+            --card-hover: #6c5ce7;
+            --modal-overlay: rgba(0,0,0,0.95);
+            --font: system-ui, sans-serif;
+        }
+        /* Light / Paper */
+        [data-theme="light"] {
+            --bg: #f5f5f0;
+            --card: #ffffff;
+            --text: #1a1a1a;
+            --muted: #666666;
+            --accent: #1565c0;
+            --ok: #2e7d32;
+            --warn: #ef6c00;
+            --card-border: rgba(0,0,0,0.1);
+            --card-hover: #1565c0;
+            --modal-overlay: rgba(0,0,0,0.4);
+            --font: system-ui, sans-serif;
+        }
+        [data-theme="light"] .modal-close { color: #fff; }
+        /* High contrast */
+        [data-theme="contrast"] {
+            --bg: #000000;
+            --card: #000000;
+            --text: #ffffff;
+            --muted: #cccccc;
+            --accent: #ffff00;
+            --ok: #00ff00;
+            --warn: #ff9900;
+            --card-border: #ffffff;
+            --card-hover: #ffff00;
+            --modal-overlay: rgba(0,0,0,0.9);
+            --font: system-ui, sans-serif;
+        }
+        [data-theme="contrast"] .card { border-width: 2px; }
+        /* Glass */
+        [data-theme="glass"] {
+            --bg: #1a1a2e;
+            --card: rgba(255,255,255,0.08);
+            --text: #eaeaea;
+            --muted: #a0a0a0;
+            --accent: #7b68ee;
+            --ok: #4ade80;
+            --warn: #fbbf24;
+            --card-border: rgba(255,255,255,0.12);
+            --card-hover: rgba(123,104,238,0.5);
+            --modal-overlay: rgba(0,0,0,0.5);
+            --font: system-ui, sans-serif;
+        }
+        [data-theme="glass"] .card,
+        [data-theme="glass"] .modal-panel { backdrop-filter: blur(12px); }
+        [data-theme="glass"] body { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
         * { box-sizing: border-box; }
         body {
             font-family: var(--font);
@@ -177,15 +280,94 @@
         }
         [data-theme="retro"] .theme-btn.active { background: #000080; color: #fff; border-color: #000080; }
         [data-theme="retro"] .theme-btn:hover:not(.active) { background: #d4d4d4; }
+        /* Themed scrollbars */
+        .modal-panel::-webkit-scrollbar { width: 10px; height: 10px; }
+        .modal-panel::-webkit-scrollbar-track { background: var(--bg); }
+        .modal-panel::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 5px; }
+        .modal-panel::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+        * { scrollbar-width: thin; scrollbar-color: var(--muted) var(--bg); }
+        /* Layout density */
+        body.density-compact .grid { gap: 0.5rem; }
+        body.density-compact .card { padding: 0.6rem; }
+        body.density-compact .card h2 { font-size: 0.75rem; margin-bottom: 0.5rem; }
+        body.density-compact .card .value { font-size: 1.2rem; }
+        body.density-spacious .grid { gap: 1.5rem; }
+        body.density-spacious .card { padding: 1.5rem; }
+        body.density-spacious .card .value { font-size: 1.75rem; }
+        /* Card hidden by visibility toggle */
+        .card.hidden { display: none !important; }
+        /* Animations */
+        .card { animation: cardFadeIn 0.4s ease-out; }
+        .card.updated-pulse { animation: pulse 0.5s ease-out; }
+        @keyframes cardFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @media (prefers-reduced-motion: reduce) {
+            .card { animation: none; }
+            .card.updated-pulse { animation: none; }
+        }
+        /* Controls row */
+        .controls-row { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+        .controls-row label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; color: var(--muted); }
+        .controls-row select {
+            padding: 0.35rem 0.6rem; font-size: 0.8rem; border-radius: 6px;
+            border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-family: var(--font);
+        }
+        .controls-row .card-toggle { font-size: 0.75rem; color: var(--muted); cursor: pointer; }
+        .controls-row .card-toggle:hover { color: var(--accent); }
+        .card-visibility-popover {
+            position: absolute; top: 100%; right: 0; margin-top: 0.25rem; min-width: 140px;
+            background: var(--card); border: 1px solid var(--card-border); border-radius: 8px;
+            padding: 0.5rem 0.75rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 50; font-size: 0.8rem;
+        }
+        .card-visibility-popover label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.2rem 0; }
+        .page-header { position: relative; }
+        .govee-view-toggle { font-size: 0.8rem; margin-bottom: 0.5rem; }
+        .govee-view-toggle button { padding: 0.2rem 0.5rem; margin-right: 0.25rem; border-radius: 4px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); cursor: pointer; }
+        .govee-view-toggle button.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+        .govee-compact-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+        .govee-compact-row span:last-child { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem; }
     </style>
 </head>
 <body>
     <header class="page-header">
-        <h1>Home Lab Dashboard <span class="updated" style="font-size: 0.7rem; font-weight: normal;">(refreshes every 5s)</span></h1>
-        <div class="theme-switcher" role="group" aria-label="Theme">
-            <button type="button" class="theme-btn active" data-theme="default" title="Default">Default</button>
-            <button type="button" class="theme-btn" data-theme="matrix" title="Matrix terminal">Matrix</button>
-            <button type="button" class="theme-btn" data-theme="retro" title="Windows 95/XP">Retro</button>
+        <h1>Home Lab Dashboard <span class="updated refresh-hint" style="font-size: 0.7rem; font-weight: normal;">(refreshes every 5s)</span></h1>
+        <div class="controls-row">
+            <label>Theme <select id="theme-select" aria-label="Theme">
+                <option value="default">Default</option>
+                <option value="matrix">Matrix</option>
+                <option value="retro">Retro</option>
+                <option value="solarized">Solarized</option>
+                <option value="dracula">Dracula</option>
+                <option value="nord">Nord</option>
+                <option value="amoled">AMOLED</option>
+                <option value="light">Light</option>
+                <option value="contrast">High contrast</option>
+                <option value="glass">Glass</option>
+                <option value="system">System</option>
+            </select></label>
+            <label>Refresh <select id="refresh-select" aria-label="Refresh interval">
+                <option value="5">5s</option>
+                <option value="15">15s</option>
+                <option value="30">30s</option>
+                <option value="60">1 min</option>
+                <option value="0">Pause</option>
+            </select></label>
+            <label>Layout <select id="density-select" aria-label="Layout density">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+                <option value="spacious">Spacious</option>
+            </select></label>
+            <span class="card-toggle-wrap" style="position: relative;">
+                <span class="card-toggle" id="card-toggle" title="Show/hide cards">Cards</span>
+                <div id="card-visibility-popover" class="card-visibility-popover" style="display: none;">
+        <label><input type="checkbox" data-card="server-stats-card" checked> Server</label>
+        <label><input type="checkbox" data-card="desktop-stats-card" checked> Desktop</label>
+        <label><input type="checkbox" data-card="devices-card" checked> Devices</label>
+        <label><input type="checkbox" data-card="speed-test-card" checked> Speed test</label>
+        <label><input type="checkbox" data-card="govee-devices-card" checked> Govee</label>
+                </div>
+            </span>
         </div>
     </header>
     <div class="grid" id="dashboard">
@@ -227,25 +409,34 @@
     <script>
         const API = ''; // same origin
         const THEME_KEY = 'homelab-theme';
+        const REFRESH_KEY = 'homelab-refresh';
+        const DENSITY_KEY = 'homelab-density';
+        const CARDS_KEY = 'homelab-visible-cards';
+        const GOVEE_VIEW_KEY = 'homelab-govee-view';
 
+        const THEMES = ['default','matrix','retro','solarized','dracula','nord','amoled','light','contrast','glass','system'];
+        const PANELS = ['server','desktop','devices','speed','govee'];
+
+        function resolveTheme(theme) {
+            if (theme !== 'system') return theme;
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'default' : 'light';
+        }
         function applyTheme(theme) {
             theme = theme || 'default';
-            document.documentElement.setAttribute('data-theme', theme);
-            document.querySelectorAll('.theme-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-theme') === theme);
-            });
+            const resolved = resolveTheme(theme);
+            document.documentElement.setAttribute('data-theme', resolved);
+            const sel = document.getElementById('theme-select');
+            if (sel) sel.value = theme;
             try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
         }
-
-        (function initTheme() {
+        function initTheme() {
             let theme = 'default';
             try { theme = localStorage.getItem(THEME_KEY) || 'default'; } catch (e) {}
             applyTheme(theme);
-        })();
-
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.addEventListener('click', () => applyTheme(btn.getAttribute('data-theme')));
-        });
+        }
+        initTheme();
+        document.getElementById('theme-select').addEventListener('change', function() { applyTheme(this.value); });
+        if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (document.getElementById('theme-select').value === 'system') applyTheme('system'); });
 
         async function fetchJson(path) {
             const r = await fetch(API + path);
@@ -399,7 +590,32 @@
             } else if (panel === 'govee') {
                 title.textContent = 'Govee – ' + (d.total ?? 0) + ' devices';
                 const escapeAttr = (s) => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-                body.innerHTML = `
+                let goveeView = 'full';
+                try { goveeView = localStorage.getItem(GOVEE_VIEW_KEY) || 'full'; } catch (e) {}
+                const isCompact = goveeView === 'compact';
+                const viewToggle = '<div class="govee-view-toggle"><button type="button" class="govee-view-btn' + (isCompact ? '' : ' active') + '" data-view="full">Full</button><button type="button" class="govee-view-btn' + (isCompact ? ' active' : '') + '" data-view="compact">Compact</button></div>';
+                const devices = d.devices || [];
+                const compactHtml = devices.map(dev => {
+                    const deviceId = escapeAttr(dev.device);
+                    const modelId = escapeAttr(dev.model);
+                    const canControl = dev.controllable && dev.type !== 'lan';
+                    const ctrls = canControl
+                        ? '<button type="button" class="govee-btn govee-on" data-device="' + deviceId + '" data-model="' + modelId + '">On</button><button type="button" class="govee-btn govee-off" data-device="' + deviceId + '" data-model="' + modelId + '">Off</button> '
+                        + '<input type="range" min="0" max="100" value="50" class="govee-brightness" data-device="' + deviceId + '" data-model="' + modelId + '" style="width:60px;vertical-align:middle"> '
+                        + '<button type="button" class="govee-btn govee-color" data-device="' + deviceId + '" data-model="' + modelId + '" data-r="255" data-g="255" data-b="255">W</button>'
+                        + '<button type="button" class="govee-btn govee-color" data-device="' + deviceId + '" data-model="' + modelId + '" data-r="255" data-g="0" data-b="0">R</button>'
+                        + '<button type="button" class="govee-btn govee-color" data-device="' + deviceId + '" data-model="' + modelId + '" data-r="0" data-g="255" data-b="0">G</button>'
+                        + '<button type="button" class="govee-btn govee-color" data-device="' + deviceId + '" data-model="' + modelId + '" data-r="0" data-g="0" data-b="255">B</button> '
+                        + '<button type="button" class="govee-btn govee-temp" data-device="' + deviceId + '" data-model="' + modelId + '" data-k="2700">Warm</button>'
+                        + '<button type="button" class="govee-btn govee-temp" data-device="' + deviceId + '" data-model="' + modelId + '" data-k="4000">Neutral</button>'
+                        + '<button type="button" class="govee-btn govee-temp" data-device="' + deviceId + '" data-model="' + modelId + '" data-k="6500">Cool</button>'
+                        : '—';
+                    return '<div class="govee-compact-row"><span><strong>' + (dev.name || '—') + '</strong> ' + (dev.model || '') + '</span><span>' + ctrls + '</span></div>';
+                }).join('');
+                const detailRow = '<div class="detail-row" style="margin-top:0.5rem"><span>Last updated</span><span>' + new Date(d.timestamp || 0).toLocaleString() + '</span></div>';
+                body.innerHTML = viewToggle + (isCompact
+                    ? '<div class="govee-compact">' + compactHtml + '</div>' + detailRow
+                    : `
                     <table>
                         <thead><tr><th>Name</th><th>Model</th><th>Type</th><th>IP</th><th>Controllable</th><th>On/Off</th><th>Brightness</th><th>Color</th><th>Temp</th></tr></thead>
                         <tbody>
@@ -427,7 +643,13 @@
                         </tbody>
                     </table>
                     <div class="detail-row" style="margin-top:0.5rem"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
-                `;
+                `);
+                body.querySelectorAll('.govee-view-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        try { localStorage.setItem(GOVEE_VIEW_KEY, this.dataset.view); } catch (e) {}
+                        openDetail('govee');
+                    });
+                });
                 body.querySelectorAll('.govee-on').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); goveeControl(btn.dataset.device, btn.dataset.model, 'turn', 'on'); }));
                 body.querySelectorAll('.govee-off').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); goveeControl(btn.dataset.device, btn.dataset.model, 'turn', 'off'); }));
                 body.querySelectorAll('.govee-brightness').forEach(inp => inp.addEventListener('change', (e) => { e.stopPropagation(); goveeControl(inp.dataset.device, inp.dataset.model, 'brightness', parseInt(inp.value, 10)); }));
@@ -464,16 +686,84 @@
         }
 
         const cardIds = { server: 'server-stats', desktop: 'desktop-stats', devices: 'devices', speed: 'speed-test', govee: 'govee-devices' };
+        const cardIdToPanel = { 'server-stats-card': 'server', 'desktop-stats-card': 'desktop', 'devices-card': 'devices', 'speed-test-card': 'speed', 'govee-devices-card': 'govee' };
+        let refreshTimer = null;
+
+        function getRefreshMs() {
+            let v = 5;
+            try { v = parseInt(localStorage.getItem(REFRESH_KEY) || '5', 10); } catch (e) {}
+            return v === 0 ? 0 : Math.max(5000, v * 1000);
+        }
+        function applyRefreshInterval() {
+            const ms = getRefreshMs();
+            document.getElementById('refresh-select').value = ms === 0 ? '0' : String(ms / 1000);
+            const hint = document.querySelector('.refresh-hint');
+            if (hint) hint.textContent = ms ? '(refreshes every ' + (ms / 1000) + 's)' : '(paused)';
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (ms) refreshTimer = setInterval(load, ms);
+        }
+        document.getElementById('refresh-select').addEventListener('change', function() {
+            const v = parseInt(this.value, 10);
+            try { localStorage.setItem(REFRESH_KEY, String(v)); } catch (e) {}
+            applyRefreshInterval();
+        });
+        (function initRefresh() { applyRefreshInterval(); })();
+
+        function applyDensity() {
+            let d = 'comfortable';
+            try { d = localStorage.getItem(DENSITY_KEY) || 'comfortable'; } catch (e) {}
+            document.body.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
+            document.body.classList.add('density-' + d);
+            document.getElementById('density-select').value = d;
+        }
+        document.getElementById('density-select').addEventListener('change', function() {
+            try { localStorage.setItem(DENSITY_KEY, this.value); } catch (e) {}
+            applyDensity();
+        });
+        applyDensity();
+
+        function applyCardVisibility() {
+            let visible = [];
+            try { visible = JSON.parse(localStorage.getItem(CARDS_KEY) || '["server-stats-card","desktop-stats-card","devices-card","speed-test-card","govee-devices-card"]'); } catch (e) {}
+            const all = ['server-stats-card','desktop-stats-card','devices-card','speed-test-card','govee-devices-card'];
+            all.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', !visible.includes(id));
+            });
+            document.querySelectorAll('#card-visibility-popover input').forEach(cb => {
+                cb.checked = visible.includes(cb.dataset.card);
+            });
+        }
+        document.getElementById('card-toggle').addEventListener('click', function(e) {
+            const pop = document.getElementById('card-visibility-popover');
+            pop.style.display = pop.style.display === 'none' ? 'block' : 'none';
+            e.stopPropagation();
+        });
+        document.addEventListener('click', () => { document.getElementById('card-visibility-popover').style.display = 'none'; });
+        document.getElementById('card-visibility-popover').addEventListener('click', e => e.stopPropagation());
+        document.querySelectorAll('#card-visibility-popover input').forEach(cb => {
+            cb.addEventListener('change', function() {
+                let visible = [];
+                document.querySelectorAll('#card-visibility-popover input:checked').forEach(c => visible.push(c.dataset.card));
+                try { localStorage.setItem(CARDS_KEY, JSON.stringify(visible)); } catch (e) {}
+                applyCardVisibility();
+            });
+        });
+        applyCardVisibility();
+
         async function loadOne(path, key, render) {
             try {
                 const data = await fetchJson(path);
                 lastData[key] = data;
+                const panelId = key === 'server' ? 'server-stats' : key === 'desktop' ? 'desktop-stats' : key === 'speed' ? 'speed-test' : key;
                 const target = document.getElementById(cardIds[key]);
                 if (!target) return;
                 if (data && data.error) {
                     target.innerHTML = '<span class="error">' + (data.message || 'Live data unavailable') + '</span>';
                 } else {
                     target.innerHTML = render(data);
+                    target.classList.add('updated-pulse');
+                    setTimeout(() => target.classList.remove('updated-pulse'), 500);
                 }
             } catch (e) {
                 lastData[key] = null;
@@ -489,10 +779,34 @@
                 loadOne('/api/speed-test', 'speed', renderSpeedTest),
                 loadOne('/api/govee-devices', 'govee', renderGovee)
             ]);
+            updateTabStatus();
+        }
+
+        function updateTabStatus() {
+            let issues = 0;
+            if (lastData.server && lastData.server.error) issues++;
+            if (lastData.desktop && lastData.desktop.error) issues++;
+            if (lastData.devices && lastData.devices.error) issues++;
+            if (lastData.govee && lastData.govee.error) issues++;
+            document.title = issues ? 'Home Lab (' + issues + ' issue' + (issues > 1 ? 's' : '') + ')' : 'Home Lab Dashboard';
         }
 
         load();
-        setInterval(load, 5000);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { closeModal(); return; }
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (e.key === 't' || e.key === 'T') {
+                const sel = document.getElementById('theme-select');
+                const i = THEMES.indexOf(sel.value);
+                applyTheme(THEMES[(i + 1) % THEMES.length]);
+                return;
+            }
+            const n = parseInt(e.key, 10);
+            if (n >= 1 && n <= 5) {
+                openDetail(PANELS[n - 1]);
+            }
+        });
 
         document.querySelectorAll('.card[data-panel]').forEach(card => {
             card.addEventListener('click', () => openDetail(card.getAttribute('data-panel')));
