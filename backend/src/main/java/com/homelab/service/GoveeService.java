@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.annotation.PostConstruct;
 import java.util.*;
 
 /**
@@ -28,6 +29,16 @@ public class GoveeService {
 
     public GoveeService(HomelabProperties properties) {
         this.properties = properties;
+    }
+
+    @PostConstruct
+    public void logConfig() {
+        HomelabProperties.Govee g = properties.getGovee();
+        if (g.isEnabled() && g.getApiKey() != null && !g.getApiKey().isBlank()) {
+            log.info("Govee: enabled (API key set)");
+        } else {
+            log.info("Govee: disabled (set homelab.govee.enabled=true and homelab.govee.api-key in application-local.yml to enable)");
+        }
     }
 
     /**
