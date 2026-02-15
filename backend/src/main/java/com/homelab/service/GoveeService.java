@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -27,9 +28,12 @@ public class GoveeService {
     private static final Logger log = LoggerFactory.getLogger(GoveeService.class);
     /** Current Govee Open API – single call for all devices and capabilities. */
     private static final String OPENAPI_DEVICES_URL = "https://openapi.api.govee.com/router/api/v1/user/devices";
+    /** Control You Device – https://developer.govee.com/reference/control-you-devices */
+    private static final String OPENAPI_CONTROL_URL = "https://openapi.api.govee.com/router/api/v1/device/control";
     /** Legacy endpoints (fallback if openapi fails). */
     private static final String LEGACY_LIGHTS_URL = "https://developer-api.govee.com/v1/devices";
     private static final String LEGACY_APPLIANCES_URL = "https://developer-api.govee.com/v1/appliance/devices";
+    private static final String LEGACY_CONTROL_URL = "https://developer-api.govee.com/v1/devices/control";
     private static final String LAN_MULTICAST = "239.255.255.250";
     private static final int LAN_MULTICAST_PORT = 4001;
     private static final int LAN_LISTEN_PORT = 4002;
@@ -111,6 +115,55 @@ public class GoveeService {
         String id = (String) device.get("device");
         if (id != null && !id.isBlank() && seen.add(id)) list.add(device);
         else if (id == null || id.isBlank()) list.add(device);
+    }
+
+    /**
+     * Send control command to a Govee device (Control You Device API).
+     * See https://developer.govee.com/reference/control-you-devices
+     * @param device device id (e.g. MAC)
+     * @param model model (e.g. H6089)
+     * @param cmdName "turn" | "brightness" | "color" | "colorTem"
+     * @param cmdValue for turn: "on"|"off"; brightness: 0-100; color: {r,g,b}; colorTem: 2000-9000
+     * @return true if command accepted (code 200)
+     */
+    @SuppressWarnings("unchecked")
+    public boolean control(String device, String model, String cmdName, Object cmdValue) {
+        HomelabProperties.Govee g = properties.getGovee();
+        if (!g.isEnabled() || g.getApiKey() == null || g.getApiKey().isBlank()) {
+            return false;
+        }
+        if (device == null || device.isBlank() || model == null || model.isBlank() || cmdName == null || cmdName.isBlank()) {
+            return false;
+        }
+        Map<String, Object> cmd = new HashMap<>();
+        cmd.put("name", cmdName);
+        cmd.put("value", cmdValue != null ? cmdValue : "on");
+        Map<String, Object> body = new HashMap<>();
+        body.put("device", device);
+        body.put("model", model);
+        body.put("cmd", cmd);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Govee-API-Key", g.getApiKey());
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(OPENAPI_CONTROL_URL, HttpMethod.PUT, entity, Map.class);
+            Map<String, Object> res = response.getBody();
+            if (res != null && isCode200(res.get("code"))) {
+                return true;
+            }
+            if (res != null) {
+                log.warn("Govee control failed: code={}, message={}", res.get("code"), res.get("message"));
+            }
+            ResponseEntity<Map> legacy = restTemplate.exchange(LEGACY_CONTROL_URL, HttpMethod.PUT, entity, Map.class);
+            Map<String, Object> leg = legacy.getBody();
+            return leg != null && isCode200(leg.get("code"));
+        } catch (Exception e) {
+            log.warn("Govee control failed: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**
