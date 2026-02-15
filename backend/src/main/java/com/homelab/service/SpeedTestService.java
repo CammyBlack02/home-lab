@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Runs Ookla Speedtest CLI and parses JSON. Caches result to avoid running on every poll.
- * Requires: speedtest (Ookla) installed, e.g. from https://www.speedtest.net/apps/cli
+ * Runs Speedtest CLI and parses JSON. Supports both Ookla CLI (-f json) and Python speedtest-cli (--json).
+ * Caches result for 10 minutes.
  */
 @Service
 public class SpeedTestService {
@@ -22,6 +22,7 @@ public class SpeedTestService {
     private static final long CACHE_MS = 10 * 60 * 1000; // 10 minutes
     private static final int PROCESS_TIMEOUT_SEC = 120;
     private static final double BYTES_PER_SEC_TO_MBPS = 1.0 / 125_000; // 1 Mbps = 125000 bytes/s
+    private static final double BITS_PER_SEC_TO_MBPS = 1.0 / 1_000_000; // Python CLI uses bits/s
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private volatile Map<String, Object> cached;
@@ -44,7 +45,20 @@ public class SpeedTestService {
     }
 
     private Map<String, Object> runSpeedTest() {
-        ProcessBuilder pb = new ProcessBuilder("speedtest", "-f", "json");
+        // Try Python speedtest-cli first (--json), then Ookla (-f json)
+        String[][] commands = {
+                { "speedtest", "--json" },
+                { "speedtest", "-f", "json" }
+        };
+        for (String[] cmd : commands) {
+            Map<String, Object> result = runCommand(cmd);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    private Map<String, Object> runCommand(String[] command) {
+        ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(true);
         try {
             Process p = pb.start();
@@ -56,12 +70,13 @@ public class SpeedTestService {
             }
             String output = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             if (p.exitValue() != 0) {
-                log.warn("Speedtest exited with {}: {}", p.exitValue(), output.length() > 200 ? output.substring(0, 200) + "..." : output);
                 return null;
             }
-            return parseOoklaJson(output);
+            // Try Ookla format first (ping.latency, download.bandwidth), then Python (top-level download/upload/ping in bits/s)
+            Map<String, Object> result = parseOoklaJson(output);
+            if (result != null) return result;
+            return parsePythonCliJson(output);
         } catch (Exception e) {
-            log.warn("Speedtest failed: {}", e.getMessage());
             return null;
         }
     }
@@ -91,6 +106,7 @@ public class SpeedTestService {
                 uploadMbps = bytesPerSec * BYTES_PER_SEC_TO_MBPS;
             }
 
+            if (downloadMbps <= 0 && uploadMbps <= 0) return null;
             return Map.of(
                     "download_mbps", Math.round(downloadMbps * 10) / 10.0,
                     "upload_mbps", Math.round(uploadMbps * 10) / 10.0,
@@ -98,7 +114,29 @@ public class SpeedTestService {
                     "timestamp", System.currentTimeMillis()
             );
         } catch (Exception e) {
-            log.warn("Speedtest JSON parse failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Parse Python speedtest-cli (--json): top-level download, upload in bits/s; ping in ms.
+     */
+    private Map<String, Object> parsePythonCliJson(String json) {
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.has("download") || !root.has("upload")) return null;
+            double downloadBitsPerSec = root.get("download").asDouble();
+            double uploadBitsPerSec = root.get("upload").asDouble();
+            double downloadMbps = downloadBitsPerSec * BITS_PER_SEC_TO_MBPS;
+            double uploadMbps = uploadBitsPerSec * BITS_PER_SEC_TO_MBPS;
+            double pingMs = root.has("ping") ? root.get("ping").asDouble() : 0;
+            return Map.of(
+                    "download_mbps", Math.round(downloadMbps * 10) / 10.0,
+                    "upload_mbps", Math.round(uploadMbps * 10) / 10.0,
+                    "ping_ms", (int) Math.round(pingMs),
+                    "timestamp", System.currentTimeMillis()
+            );
+        } catch (Exception e) {
             return null;
         }
     }
