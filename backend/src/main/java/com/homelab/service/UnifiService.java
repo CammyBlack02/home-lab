@@ -75,8 +75,10 @@ public class UnifiService {
                     ? new String[]{"/api/auth/login", "/proxy/network/api/auth/login"}
                     : new String[]{"/api/login"};
             String cookieHeader = null;
+            String csrfToken = null;
+            ResponseEntity<Map> loginResp = null;
             for (String loginPath : loginPaths) {
-                ResponseEntity<Map> loginResp = restTemplate.exchange(
+                loginResp = restTemplate.exchange(
                         base + loginPath,
                         HttpMethod.POST,
                         new HttpEntity<>(body, loginHeaders),
@@ -88,6 +90,9 @@ public class UnifiService {
                     cookieHeader = setCookies.stream()
                             .map(s -> s.contains(";") ? s.substring(0, s.indexOf(';')).trim() : s.trim())
                             .collect(Collectors.joining("; "));
+                    // UniFi OS may require CSRF token on subsequent requests
+                    csrfToken = loginResp.getHeaders().getFirst("X-CSRF-Token");
+                    if (csrfToken == null) csrfToken = loginResp.getHeaders().getFirst("X-Updated-Csrf-Token");
                     break;
                 }
             }
@@ -98,6 +103,9 @@ public class UnifiService {
 
             HttpHeaders getHeaders = new HttpHeaders();
             getHeaders.set(HttpHeaders.COOKIE, cookieHeader);
+            if (csrfToken != null && !csrfToken.isBlank()) {
+                getHeaders.set("X-CSRF-Token", csrfToken);
+            }
             ResponseEntity<Map> clientsResp = restTemplate.exchange(
                     base + clientsPath,
                     HttpMethod.GET,
