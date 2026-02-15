@@ -12,12 +12,17 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.net.ssl.SSLContext;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class UnifiService {
+
+    private static final Logger log = LoggerFactory.getLogger(UnifiService.class);
 
     private final HomelabProperties properties;
     private final RestTemplate restTemplate;
@@ -58,7 +63,8 @@ public class UnifiService {
             return null;
         }
         String base = u.getBaseUrl().replaceAll("/$", "");
-        String loginPath = u.isUseUnifiOs() ? "/proxy/network/api/auth/login" : "/api/login";
+        // UniFi OS: login at /api/auth/login (no proxy/network); network API under /proxy/network
+        String loginPath = u.isUseUnifiOs() ? "/api/auth/login" : "/api/login";
         String clientsPath = u.isUseUnifiOs() ? "/proxy/network/api/s/default/stat/sta" : "/api/s/default/stat/sta";
 
         try {
@@ -73,6 +79,8 @@ public class UnifiService {
             );
             List<String> cookies = loginResp.getHeaders().get(HttpHeaders.SET_COOKIE);
             if (cookies == null || cookies.isEmpty()) {
+                Map<String, Object> loginBody = loginResp.getBody();
+                log.warn("UniFi login returned no cookie. Status={}, body={}", loginResp.getStatusCode(), loginBody);
                 return null;
             }
             String cookieHeader = cookies.stream().collect(Collectors.joining("; "));
@@ -101,6 +109,7 @@ public class UnifiService {
                     "timestamp", System.currentTimeMillis()
             );
         } catch (Exception e) {
+            log.warn("UniFi request failed: {}", e.getMessage());
             return null;
         }
     }
