@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Lab Dashboard</title>
+    <style>
+        :root {
+            --bg: #0f1419;
+            --card: #1a2332;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --accent: #58a6ff;
+            --ok: #3fb950;
+            --warn: #d29922;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 1rem;
+            min-height: 100vh;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 1rem 0;
+            color: var(--text);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .card {
+            background: var(--card);
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .card h2 {
+            font-size: 0.875rem;
+            margin: 0 0 0.75rem 0;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .card .value { font-size: 1.5rem; font-weight: 600; color: var(--accent); }
+        .card .row { display: flex; justify-content: space-between; margin: 0.25rem 0; }
+        .card .row span:last-child { color: var(--muted); }
+        .status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.5rem; }
+        .status.online { background: var(--ok); }
+        .status.offline { background: var(--muted); }
+        .error { color: #f85149; font-size: 0.875rem; }
+        .updated { color: var(--muted); font-size: 0.75rem; margin-top: 0.5rem; }
+        .card { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+        .card:hover { border-color: rgba(88, 166, 255, 0.3); box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.15); }
+        .card .hint { font-size: 0.7rem; color: var(--muted); margin-top: 0.5rem; }
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+            align-items: center; justify-content: center; padding: 1rem;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-panel {
+            background: var(--card); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+            max-width: 480px; width: 100%; max-height: 85vh; overflow: auto;
+            padding: 1.25rem; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .modal-panel h3 { margin: 0 0 1rem 0; color: var(--accent); font-size: 1.1rem; }
+        .modal-panel .detail-row { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .modal-panel .detail-row span:last-child { color: var(--muted); }
+        .modal-panel table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .modal-panel th, .modal-panel td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .modal-panel th { color: var(--muted); font-weight: 500; }
+        .modal-close { margin-top: 1rem; padding: 0.4rem 0.8rem; background: var(--muted); border: none; border-radius: 6px; color: var(--bg); cursor: pointer; font-size: 0.875rem; }
+        .modal-close:hover { background: var(--text); }
+    </style>
+</head>
+<body>
+    <h1>Home Lab Dashboard <span class="updated" style="font-size: 0.7rem; font-weight: normal;">(refreshes every 5s)</span></h1>
+    <div class="grid" id="dashboard">
+        <div class="card" id="server-stats-card" data-panel="server" title="Click for more">
+            <h2>Server stats</h2>
+            <div id="server-stats">Loading…</div>
+            <div class="hint">Click for more</div>
+        </div>
+        <div class="card" id="desktop-stats-card" data-panel="desktop" title="Click for more">
+            <h2>Desktop (Bazzite)</h2>
+            <div id="desktop-stats">Loading…</div>
+            <div class="hint">Click for more</div>
+        </div>
+        <div class="card" id="devices-card" data-panel="devices" title="Click for more">
+            <h2>Devices</h2>
+            <div id="devices">Loading…</div>
+            <div class="hint">Click for more</div>
+        </div>
+        <div class="card" id="speed-test-card" data-panel="speed" title="Click for more">
+            <h2>Speed test</h2>
+            <div id="speed-test">Loading…</div>
+            <div class="hint">Click for more</div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-panel" id="modal-panel" onclick="event.stopPropagation()">
+            <h3 id="modal-title">Details</h3>
+            <div id="modal-body"></div>
+            <button class="modal-close" id="modal-close">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const API = ''; // same origin
+
+        async function fetchJson(path) {
+            const r = await fetch(API + path);
+            if (!r.ok) throw new Error(r.statusText);
+            return r.json();
+        }
+
+        function n(v) { return v != null ? v : '—'; }
+
+        function renderServerStats(data) {
+            const uptimeSec = data.uptime_seconds != null ? data.uptime_seconds : 0;
+            const uptimeDays = Math.floor(Number(uptimeSec) / 86400);
+            return `
+                <div class="value">${n(data.hostname)}</div>
+                <div class="row"><span>CPU</span><span>${n(data.cpu_percent)}%</span></div>
+                <div class="row"><span>Memory</span><span>${n(data.memory_percent)}%</span></div>
+                <div class="row"><span>Disk</span><span>${n(data.disk_used_percent)}%</span></div>
+                <div class="row"><span>Uptime</span><span>${uptimeDays}d</span></div>
+                <div class="updated">Updated ${new Date(data.timestamp || Date.now()).toLocaleTimeString()}</div>
+            `;
+        }
+
+        function renderDesktopStats(data) {
+            const gpu = data.gpu_util_percent != null ? data.gpu_util_percent + '%' : '—';
+            const activity = data.current_activity || '—';
+            return `
+                <div class="value">${n(data.hostname)}</div>
+                <div class="row"><span>CPU</span><span>${n(data.cpu_percent)}%</span></div>
+                <div class="row"><span>Memory</span><span>${n(data.memory_percent)}%</span></div>
+                <div class="row"><span>GPU</span><span>${gpu}</span></div>
+                <div class="row"><span>Activity</span><span>${activity}</span></div>
+                <div class="updated">Updated ${new Date(data.timestamp || Date.now()).toLocaleTimeString()}</div>
+            `;
+        }
+
+        function renderDevices(data) {
+            const list = data.devices.map(d =>
+                `<div class="row"><span><span class="status ${d.status}"></span>${d.name}</span><span>${d.ip}</span></div>`
+            ).join('');
+            return list + `<div class="updated">${data.total} devices · ${new Date(data.timestamp).toLocaleTimeString()}</div>`;
+        }
+
+        function renderSpeedTest(data) {
+            return `
+                <div class="row"><span>Download</span><span class="value">${data.download_mbps} Mbps</span></div>
+                <div class="row"><span>Upload</span><span class="value">${data.upload_mbps} Mbps</span></div>
+                <div class="row"><span>Ping</span><span>${data.ping_ms} ms</span></div>
+                <div class="updated">${new Date(data.timestamp).toLocaleTimeString()}</div>
+            `;
+        }
+
+        let lastData = { server: null, desktop: null, devices: null, speed: null };
+
+        function openDetail(panel) {
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modal-title');
+            const body = document.getElementById('modal-body');
+            const d = lastData[panel];
+            if (!d) { body.innerHTML = '<p class="error">No data yet.</p>'; modal.classList.add('open'); return; }
+            if (panel === 'server') {
+                const uptimeSec = d.uptime_seconds != null ? d.uptime_seconds : 0;
+                const days = Math.floor(Number(uptimeSec) / 86400);
+                const hours = Math.floor((uptimeSec % 86400) / 3600);
+                title.textContent = 'Server – details';
+                body.innerHTML = `
+                    <div class="detail-row"><span>Hostname</span><span>${n(d.hostname)}</span></div>
+                    <div class="detail-row"><span>CPU</span><span>${n(d.cpu_percent)}%</span></div>
+                    <div class="detail-row"><span>Memory</span><span>${n(d.memory_percent)}%</span></div>
+                    <div class="detail-row"><span>Disk used</span><span>${n(d.disk_used_percent)}%</span></div>
+                    <div class="detail-row"><span>Uptime</span><span>${days}d ${hours}h</span></div>
+                    <div class="detail-row"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
+                `;
+            } else if (panel === 'desktop') {
+                title.textContent = 'Desktop (Bazzite) – details';
+                body.innerHTML = `
+                    <div class="detail-row"><span>Hostname</span><span>${n(d.hostname)}</span></div>
+                    <div class="detail-row"><span>CPU</span><span>${n(d.cpu_percent)}%</span></div>
+                    <div class="detail-row"><span>Memory</span><span>${n(d.memory_percent)}%</span></div>
+                    <div class="detail-row"><span>GPU utilisation</span><span>${d.gpu_util_percent != null ? d.gpu_util_percent + '%' : '—'}</span></div>
+                    <div class="detail-row"><span>Current activity</span><span>${n(d.current_activity)}</span></div>
+                    <div class="detail-row"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
+                `;
+            } else if (panel === 'devices') {
+                title.textContent = 'Devices – ' + (d.total || 0) + ' total';
+                body.innerHTML = `
+                    <table>
+                        <thead><tr><th>Name</th><th>IP</th><th>MAC</th><th>Status</th></tr></thead>
+                        <tbody>
+                            ${(d.devices || []).map(dev => '<tr><td>' + dev.name + '</td><td>' + dev.ip + '</td><td>' + (dev.mac || '—') + '</td><td><span class="status ' + dev.status + '"></span>' + dev.status + '</td></tr>').join('')}
+                        </tbody>
+                    </table>
+                    <div class="detail-row" style="margin-top:0.5rem"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
+                `;
+            } else if (panel === 'speed') {
+                title.textContent = 'Speed test – details';
+                body.innerHTML = `
+                    <div class="detail-row"><span>Download</span><span>${n(d.download_mbps)} Mbps</span></div>
+                    <div class="detail-row"><span>Upload</span><span>${n(d.upload_mbps)} Mbps</span></div>
+                    <div class="detail-row"><span>Ping</span><span>${n(d.ping_ms)} ms</span></div>
+                    <div class="detail-row"><span>Last run</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
+                `;
+            }
+            modal.classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('open');
+        }
+
+        async function load() {
+            try {
+                const [server, desktop, devices, speed] = await Promise.all([
+                    fetchJson('/api/server-stats'),
+                    fetchJson('/api/desktop-stats'),
+                    fetchJson('/api/devices'),
+                    fetchJson('/api/speed-test')
+                ]);
+                lastData.server = server;
+                lastData.desktop = desktop;
+                lastData.devices = devices;
+                lastData.speed = speed;
+                document.getElementById('server-stats').innerHTML = renderServerStats(server);
+                document.getElementById('desktop-stats').innerHTML = renderDesktopStats(desktop);
+                document.getElementById('devices').innerHTML = renderDevices(devices);
+                document.getElementById('speed-test').innerHTML = renderSpeedTest(speed);
+            } catch (e) {
+                document.getElementById('server-stats').innerHTML = '<span class="error">' + e.message + '</span>';
+                document.getElementById('desktop-stats').innerHTML = '<span class="error">' + e.message + '</span>';
+                document.getElementById('devices').innerHTML = '<span class="error">' + e.message + '</span>';
+                document.getElementById('speed-test').innerHTML = '<span class="error">' + e.message + '</span>';
+            }
+        }
+
+        load();
+        setInterval(load, 5000);
+
+        document.querySelectorAll('.card[data-panel]').forEach(card => {
+            card.addEventListener('click', () => openDetail(card.getAttribute('data-panel')));
+        });
+        document.getElementById('modal-close').addEventListener('click', closeModal);
+        document.getElementById('modal').addEventListener('click', closeModal);
+    </script>
+</body>
+</html>

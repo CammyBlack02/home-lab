@@ -18,11 +18,13 @@ Central hub for home monitoring and control: dashboard (server/desktop stats, ne
 - **Agents**: Python
 - **External**: Unifi API, Govee Open API
 
-## Quick start
+## Quick start (Phase 1 – mock data)
 
-1. **Backend**: From `backend/`, run the Spring Boot app (see `backend/README.md` once set up).
-2. **Frontend**: Served by the backend or open `frontend/index.html` against a local API.
-3. **Agents**: Run server agent on Ubuntu server, desktop agent on Bazzite (see `agents/*/README.md`).
-4. **Access**: Dashboard at `http://<server>:port` on LAN or via VPN.
+1. **Backend + dashboard:** From `backend/`, run `mvn spring-boot:run`. Open http://localhost:8080/ for the dashboard.
+2. **Agents (optional):** Run server agent: `cd agents/server && pip install -r requirements.txt && python main.py` (port 5000). Desktop: `cd agents/desktop && pip install -r requirements.txt && python main.py` (port 5001). Backend still uses mock data until you wire it in Phase 2.
+3. **Deploy:** Build JAR with `mvn -f backend clean package`, copy to Ubuntu server, run with `java -jar ...`. Access at `http://<server>:8080` on LAN or VPN.
+4. **Secrets:** Copy `.env.example` to `.env` and fill in when you add Govee/Unifi (do not commit `.env`).
+
+**Optional (Phase 4):** PS5 “last played” – show last played game via PSN API (e.g. [psn-api](https://github.com/achievements-app/psn-api)); no real-time “currently playing,” use “recently played” + refresh token.
 
 See `docs/architecture-diagrams.md` for diagrams and the project plan (in Cursor) for the full roadmap and to-do list.
