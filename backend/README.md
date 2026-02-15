@@ -1,6 +1,6 @@
 # Backend (Spring Boot)
 
-REST API for the home monitoring dashboard. Serves mock data for Phase 1; later aggregates Unifi, Python agents, speed tests, and Govee.
+REST API for the home monitoring dashboard. Phase 2: UniFi devices, server/desktop agents, speed test. Phase 3: Govee devices (lights, plugs, appliances).
 
 ## Run locally
 
@@ -14,7 +14,7 @@ mvn spring-boot:run
 If you have the Maven wrapper: `./mvnw spring-boot:run`.  
 To generate the wrapper (one-time): `mvn -N wrapper:wrapper`.
 
-- **API:** http://localhost:8080/api/server-stats, /api/desktop-stats, /api/devices, /api/speed-test  
+- **API:** http://localhost:8080/api/server-stats, /api/desktop-stats, /api/devices, /api/speed-test, /api/govee-devices  
 - **Dashboard:** http://localhost:8080/
 
 ## Phase 2 – real data (optional config)
@@ -72,7 +72,22 @@ The dashboard shows live speed test results when a Speedtest CLI is installed. T
 
 3. Result is **cached 10 minutes**; if no CLI works or the run fails, the card shows an error.
 
+### Phase 3 – Govee (lights, plugs, appliances)
+
+The dashboard can list your Govee Wi‑Fi devices (lights, plugs, switches, and appliances) via the [Govee Developer API](https://developer.govee.com/).
+
+1. **Get an API key:** In the Govee Home app go to **Profile → Settings → Apply for API Key**, submit the form, and use the key sent to your email.
+2. **Config** (in `application-local.yml`, do not commit):
+   ```yaml
+   homelab:
+     govee:
+       enabled: true
+       api-key: "YOUR_GOVEE_API_KEY"
+   ```
+3. Restart the backend. The **Govee** card shows device count and names; click for a table (name, model, type, controllable). If Govee is disabled or the API key is missing/invalid, the card shows an error.
+
+Rate limits apply (see Govee docs); the dashboard only fetches the device list on each poll (every 5s).
+
 ## Next steps (you)
 
-- Add Govee endpoints (Phase 3).
 - Store secrets in env vars or `application-local.yml` (not committed).

@@ -10,6 +10,7 @@ public class HomelabProperties {
     private String serverAgentUrl;
     private String desktopAgentUrl;
     private Unifi unifi = new Unifi();
+    private Govee govee = new Govee();
 
     public String getServerAgentUrl() {
         return serverAgentUrl;
@@ -33,6 +34,35 @@ public class HomelabProperties {
 
     public void setUnifi(Unifi unifi) {
         this.unifi = unifi;
+    }
+
+    public Govee getGovee() {
+        return govee;
+    }
+
+    public void setGovee(Govee govee) {
+        this.govee = govee;
+    }
+
+    public static class Govee {
+        private boolean enabled;
+        private String apiKey;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getApiKey() {
+            return apiKey;
+        }
+
+        public void setApiKey(String apiKey) {
+            this.apiKey = apiKey;
+        }
     }
 
     public static class Unifi {

@@ -100,6 +100,11 @@
             <div id="speed-test">Loading…</div>
             <div class="hint">Click for more</div>
         </div>
+        <div class="card" id="govee-devices-card" data-panel="govee" title="Click for more">
+            <h2>Govee</h2>
+            <div id="govee-devices">Loading…</div>
+            <div class="hint">Click for more</div>
+        </div>
     </div>
 
     <div class="modal-overlay" id="modal">
@@ -163,7 +168,14 @@
             `;
         }
 
-        let lastData = { server: null, desktop: null, devices: null, speed: null };
+        function renderGovee(data) {
+            const list = (data.devices || []).map(d =>
+                `<div class="row"><span>${d.name}</span><span>${d.model} · ${d.type}</span></div>`
+            ).join('');
+            return list + `<div class="updated">${data.total ?? 0} devices · ${new Date(data.timestamp || 0).toLocaleTimeString()}</div>`;
+        }
+
+        let lastData = { server: null, desktop: null, devices: null, speed: null, govee: null };
 
         function openDetail(panel) {
             const modal = document.getElementById('modal');
@@ -176,6 +188,44 @@
                 const uptimeSec = d.uptime_seconds != null ? d.uptime_seconds : 0;
                 const days = Math.floor(Number(uptimeSec) / 86400);
                 const hours = Math.floor((uptimeSec % 86400) / 3600);
+                const sec = d.security || {};
+                const hasSecurity = sec.failed_ssh_logins_24h != null || sec.ufw_status || sec.updates_pending != null ||
+                    (sec.listening_ports && sec.listening_ports.length) || (sec.fail2ban && sec.fail2ban.jails && sec.fail2ban.jails.length) ||
+                    sec.unattended_upgrades || sec.apparmor;
+                let securityHtml = '';
+                if (hasSecurity) {
+                    securityHtml = '<h4 style="margin:1rem 0 0.5rem 0; color: var(--muted); font-size: 0.8rem;">Security</h4>';
+                    if (sec.failed_ssh_logins_24h != null) securityHtml += `<div class="detail-row"><span>Failed SSH logins (24h)</span><span>${sec.failed_ssh_logins_24h}</span></div>`;
+                    if (sec.ufw_status) securityHtml += `<div class="detail-row"><span>UFW</span><span>${sec.ufw_status}</span></div>`;
+                    if (sec.fail2ban && sec.fail2ban.jails && sec.fail2ban.jails.length) {
+                        securityHtml += '<div class="detail-row"><span>Fail2ban</span><span>' + (sec.fail2ban.status || 'active') + '</span></div>';
+                        securityHtml += '<table style="margin-top:0.25rem; font-size:0.85rem;"><thead><tr><th>Jail</th><th>Banned</th><th>Total banned</th><th>Currently failed</th></tr></thead><tbody>';
+                        sec.fail2ban.jails.forEach(j => {
+                            securityHtml += '<tr><td>' + (j.name || '—') + '</td><td>' + (j.currently_banned != null ? j.currently_banned : '—') + '</td><td>' + (j.total_banned != null ? j.total_banned : '—') + '</td><td>' + (j.currently_failed != null ? j.currently_failed : '—') + '</td></tr>';
+                        });
+                        securityHtml += '</tbody></table>';
+                    }
+                    if (sec.unattended_upgrades) {
+                        const uu = sec.unattended_upgrades;
+                        let uuStr = uu.installed ? 'installed' : '';
+                        if (uu.last_run_ts) uuStr += (uuStr ? ' · last run ' : '') + new Date(uu.last_run_ts).toLocaleString();
+                        securityHtml += '<div class="detail-row"><span>Unattended-upgrades</span><span>' + (uuStr || '—') + '</span></div>';
+                    }
+                    if (sec.apparmor) {
+                        const aa = sec.apparmor;
+                        let aaStr = aa.loaded ? 'loaded' : '';
+                        if (aa.profiles_enforce != null) aaStr += (aaStr ? ', ' : '') + aa.profiles_enforce + ' enforcing';
+                        if (aa.profiles_loaded != null) aaStr += (aaStr ? ', ' : '') + aa.profiles_loaded + ' profiles';
+                        securityHtml += '<div class="detail-row"><span>AppArmor</span><span>' + (aaStr || '—') + '</span></div>';
+                    }
+                    if (sec.updates_pending != null) securityHtml += `<div class="detail-row"><span>Updates pending</span><span>${sec.updates_pending}${sec.security_updates_pending != null ? ' (' + sec.security_updates_pending + ' security)' : ''}</span></div>`;
+                    if (sec.listening_ports && sec.listening_ports.length) {
+                        securityHtml += '<table style="margin-top:0.5rem; font-size:0.85rem;"><thead><tr><th>Port</th><th>Process</th></tr></thead><tbody>';
+                        sec.listening_ports.slice(0, 25).forEach(p => { securityHtml += `<tr><td>${p.port}</td><td>${p.process || '—'}</td></tr>`; });
+                        if (sec.listening_ports.length > 25) securityHtml += `<tr><td colspan="2" style="color: var(--muted);">+ ${sec.listening_ports.length - 25} more</td></tr>`;
+                        securityHtml += '</tbody></table>';
+                    }
+                }
                 title.textContent = 'Server – details';
                 body.innerHTML = `
                     <div class="detail-row"><span>Hostname</span><span>${n(d.hostname)}</span></div>
@@ -184,6 +234,7 @@
                     <div class="detail-row"><span>Disk used</span><span>${n(d.disk_used_percent)}%</span></div>
                     <div class="detail-row"><span>Uptime</span><span>${days}d ${hours}h</span></div>
                     <div class="detail-row"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
+                    ${securityHtml}
                 `;
             } else if (panel === 'desktop') {
                 title.textContent = 'Desktop (Bazzite) – details';
@@ -214,6 +265,17 @@
                     <div class="detail-row"><span>Ping</span><span>${n(d.ping_ms)} ms</span></div>
                     <div class="detail-row"><span>Last run</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
                 `;
+            } else if (panel === 'govee') {
+                title.textContent = 'Govee – ' + (d.total ?? 0) + ' devices';
+                body.innerHTML = `
+                    <table>
+                        <thead><tr><th>Name</th><th>Model</th><th>Type</th><th>Controllable</th></tr></thead>
+                        <tbody>
+                            ${(d.devices || []).map(dev => '<tr><td>' + (dev.name || '—') + '</td><td>' + (dev.model || '—') + '</td><td>' + (dev.type || '—') + '</td><td>' + (dev.controllable ? 'Yes' : 'No') + '</td></tr>').join('')}
+                        </tbody>
+                    </table>
+                    <div class="detail-row" style="margin-top:0.5rem"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
+                `;
             }
             modal.classList.add('open');
         }
@@ -222,7 +284,7 @@
             document.getElementById('modal').classList.remove('open');
         }
 
-        const cardIds = { server: 'server-stats', desktop: 'desktop-stats', devices: 'devices', speed: 'speed-test' };
+        const cardIds = { server: 'server-stats', desktop: 'desktop-stats', devices: 'devices', speed: 'speed-test', govee: 'govee-devices' };
         async function loadOne(path, key, render) {
             try {
                 const data = await fetchJson(path);
@@ -245,7 +307,8 @@
                 loadOne('/api/server-stats', 'server', renderServerStats),
                 loadOne('/api/desktop-stats', 'desktop', renderDesktopStats),
                 loadOne('/api/devices', 'devices', renderDevices),
-                loadOne('/api/speed-test', 'speed', renderSpeedTest)
+                loadOne('/api/speed-test', 'speed', renderSpeedTest),
+                loadOne('/api/govee-devices', 'govee', renderGovee)
             ]);
         }
 
