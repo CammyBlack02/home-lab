@@ -63,6 +63,8 @@ public class GoveeService {
 
             List<Map<String, Object>> appliances = fetchDevices(APPLIANCES_URL, entity, "appliance");
             if (appliances != null) allDevices.addAll(appliances);
+
+            log.info("Govee: {} devices total (lights: {}, appliances: {})", allDevices.size(), lights != null ? lights.size() : 0, appliances != null ? appliances.size() : 0);
         } catch (Exception e) {
             log.warn("Govee API failed: {}", e.getMessage());
             return null;
@@ -75,18 +77,36 @@ public class GoveeService {
         );
     }
 
+    private static boolean isCode200(Object code) {
+        if (code == null) return false;
+        if (code instanceof Number) return ((Number) code).intValue() == 200;
+        if (code instanceof String) return "200".equals(code);
+        return false;
+    }
+
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> fetchDevices(String url, HttpEntity<Void> entity, String type) {
         try {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
             Map<String, Object> body = response.getBody();
-            if (body == null || !Integer.valueOf(200).equals(body.get("code"))) {
+            if (body == null) {
+                log.warn("Govee {}: empty response body", type);
+                return Collections.emptyList();
+            }
+            if (!isCode200(body.get("code"))) {
+                log.warn("Govee {}: code={}, message={}", type, body.get("code"), body.get("message"));
                 return Collections.emptyList();
             }
             Object data = body.get("data");
-            if (!(data instanceof Map)) return Collections.emptyList();
+            if (!(data instanceof Map)) {
+                log.warn("Govee {}: no data object", type);
+                return Collections.emptyList();
+            }
             Object devices = ((Map<?, ?>) data).get("devices");
-            if (!(devices instanceof List)) return Collections.emptyList();
+            if (!(devices instanceof List)) {
+                log.warn("Govee {}: no devices array (data keys: {})", type, data instanceof Map ? ((Map<?, ?>) data).keySet() : "?");
+                return Collections.emptyList();
+            }
 
             List<Map<String, Object>> out = new ArrayList<>();
             for (Object o : (List<?>) devices) {
