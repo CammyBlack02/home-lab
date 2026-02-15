@@ -148,8 +148,11 @@ public class GoveeService {
                     break;
                 }
             }
+            if (!out.isEmpty()) {
+                log.info("Govee LAN: found {} device(s)", out.size());
+            }
         } catch (Exception e) {
-            log.debug("Govee LAN discovery failed: {}", e.getMessage());
+            log.warn("Govee LAN discovery failed: {} (is port {} in use? Same network as devices?)", e.getMessage(), LAN_LISTEN_PORT);
             return Collections.emptyList();
         }
         return out;
