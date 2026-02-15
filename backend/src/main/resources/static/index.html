@@ -171,6 +171,7 @@
             const body = document.getElementById('modal-body');
             const d = lastData[panel];
             if (!d) { body.innerHTML = '<p class="error">No data yet.</p>'; modal.classList.add('open'); return; }
+            if (d.error) { body.innerHTML = '<p class="error">' + (d.message || 'Live data unavailable') + '</p>'; modal.classList.add('open'); return; }
             if (panel === 'server') {
                 const uptimeSec = d.uptime_seconds != null ? d.uptime_seconds : 0;
                 const days = Math.floor(Number(uptimeSec) / 86400);
@@ -227,7 +228,12 @@
                 const data = await fetchJson(path);
                 lastData[key] = data;
                 const target = document.getElementById(cardIds[key]);
-                if (target) target.innerHTML = render(data);
+                if (!target) return;
+                if (data && data.error) {
+                    target.innerHTML = '<span class="error">' + (data.message || 'Live data unavailable') + '</span>';
+                } else {
+                    target.innerHTML = render(data);
+                }
             } catch (e) {
                 lastData[key] = null;
                 const target = document.getElementById(cardIds[key]);

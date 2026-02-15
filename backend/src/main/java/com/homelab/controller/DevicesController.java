@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -24,16 +23,9 @@ public class DevicesController {
         if (real != null) {
             return real;
         }
-        List<Map<String, String>> devices = List.of(
-                Map.of("name", "Bazzite Desktop", "ip", "192.168.1.10", "mac", "aa:bb:cc:dd:ee:01", "status", "online"),
-                Map.of("name", "MacBook Pro", "ip", "192.168.1.20", "mac", "aa:bb:cc:dd:ee:02", "status", "offline"),
-                Map.of("name", "HP Stream 7", "ip", "192.168.1.30", "mac", "aa:bb:cc:dd:ee:03", "status", "online"),
-                Map.of("name", "iPhone", "ip", "192.168.1.40", "mac", "aa:bb:cc:dd:ee:04", "status", "offline")
-        );
         return Map.of(
-                "devices", devices,
-                "total", devices.size(),
-                "timestamp", System.currentTimeMillis()
+                "error", true,
+                "message", "UniFi unreachable. Enable UniFi in config and check base URL and credentials."
         );
     }
 }

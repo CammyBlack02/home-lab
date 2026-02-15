@@ -13,10 +13,8 @@ public class SpeedTestController {
     @GetMapping("/speed-test")
     public Map<String, Object> getSpeedTest() {
         return Map.of(
-                "download_mbps", 94.2,
-                "upload_mbps", 22.1,
-                "ping_ms", 12,
-                "timestamp", System.currentTimeMillis()
+                "error", true,
+                "message", "Speed test not implemented yet."
         );
     }
 }

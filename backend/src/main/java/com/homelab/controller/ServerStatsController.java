@@ -24,12 +24,8 @@ public class ServerStatsController {
             return real;
         }
         return Map.of(
-                "hostname", "ubuntu-server",
-                "uptime_seconds", 86400 * 7,
-                "cpu_percent", 12.5,
-                "memory_percent", 62.0,
-                "disk_used_percent", 45.0,
-                "timestamp", System.currentTimeMillis()
+                "error", true,
+                "message", "Server agent unreachable. Check agent URL and that the agent is running."
         );
     }
 }
