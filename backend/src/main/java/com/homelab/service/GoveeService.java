@@ -301,7 +301,8 @@ public class GoveeService {
                 String model = (String) dev.get("model");
                 String name = (String) dev.get("deviceName");
                 Object supportCmds = dev.get("supportCmds");
-                boolean controllable = isControllable(dev.get("controllable"), supportCmds);
+                Object capabilities = dev.get("capabilities");
+                boolean controllable = isControllable(dev.get("controllable"), supportCmds, capabilities, type, device, model);
                 out.add(Map.of(
                         "device", device != null ? device : "",
                         "model", model != null ? model : "",
@@ -318,11 +319,15 @@ public class GoveeService {
         }
     }
 
-    /** True if controllable is Boolean true, string "true", or device has supportCmds. */
-    private static boolean isControllable(Object controllable, Object supportCmds) {
+    /** True if API says controllable, has supportCmds/capabilities, or (cloud only) has device+model so we can call control API. */
+    private static boolean isControllable(Object controllable, Object supportCmds, Object capabilities, String type, String device, String model) {
         if (Boolean.TRUE.equals(controllable)) return true;
         if (controllable instanceof String && "true".equalsIgnoreCase((String) controllable)) return true;
         if (supportCmds instanceof List && !((List<?>) supportCmds).isEmpty()) return true;
+        if (capabilities instanceof List && !((List<?>) capabilities).isEmpty()) return true;
+        if (capabilities instanceof Map && !((Map<?, ?>) capabilities).isEmpty()) return true;
+        // Open API devices with device+model can be controlled via Control You Device API
+        if ("cloud".equals(type) && device != null && !device.isBlank() && model != null && !model.isBlank()) return true;
         return false;
     }
 }
