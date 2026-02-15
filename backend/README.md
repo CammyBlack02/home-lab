@@ -77,7 +77,7 @@ The dashboard shows live speed test results when a Speedtest CLI is installed. T
 The dashboard can list Govee devices in two ways:
 
 - **Cloud API:** needs an API key from the Govee Home app (Profile → Settings → Apply for API Key). Returns devices linked to that account.
-- **LAN discovery:** no API key. Discovers devices on the **same network** as the backend. In the Govee Home app, open each device → **Settings** → turn **LAN** on. See [Govee WLAN guide](https://app-h5.govee.com/user-manual/wlan-guide).
+- **LAN discovery:** no API key. Discovers devices on the **same network** as the backend (same subnet/VLAN; does not work across e.g. “secured” vs “main Wi‑Fi” zones). In the Govee Home app, open each device → **Settings** → turn **LAN** on. See [Govee WLAN guide](https://app-h5.govee.com/user-manual/wlan-guide).
 
 **Config** (in `application-local.yml`, do not commit):
 ```yaml
