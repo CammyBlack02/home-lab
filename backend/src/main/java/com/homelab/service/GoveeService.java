@@ -148,6 +148,9 @@ public class GoveeService {
                     break;
                 }
             }
+        } catch (Exception e) {
+            log.debug("Govee LAN discovery failed: {}", e.getMessage());
+            return Collections.emptyList();
         }
         return out;
     }
