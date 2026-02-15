@@ -63,27 +63,38 @@ public class UnifiService {
             return null;
         }
         String base = u.getBaseUrl().replaceAll("/$", "");
-        // UniFi OS: login at /api/auth/login (no proxy/network); network API under /proxy/network
-        String loginPath = u.isUseUnifiOs() ? "/api/auth/login" : "/api/login";
         String clientsPath = u.isUseUnifiOs() ? "/proxy/network/api/s/default/stat/sta" : "/api/s/default/stat/sta";
 
         try {
             HttpHeaders loginHeaders = new HttpHeaders();
             loginHeaders.setContentType(MediaType.APPLICATION_JSON);
             Map<String, String> body = Map.of("username", u.getUsername(), "password", u.getPassword());
-            ResponseEntity<Map> loginResp = restTemplate.exchange(
-                    base + loginPath,
-                    HttpMethod.POST,
-                    new HttpEntity<>(body, loginHeaders),
-                    Map.class
-            );
-            List<String> cookies = loginResp.getHeaders().get(HttpHeaders.SET_COOKIE);
-            if (cookies == null || cookies.isEmpty()) {
-                Map<String, Object> loginBody = loginResp.getBody();
-                log.warn("UniFi login returned no cookie. Status={}, body={}", loginResp.getStatusCode(), loginBody);
+
+            // UniFi OS: try /api/auth/login first, then /proxy/network/api/auth/login if no cookie
+            String[] loginPaths = u.isUseUnifiOs()
+                    ? new String[]{"/api/auth/login", "/proxy/network/api/auth/login"}
+                    : new String[]{"/api/login"};
+            String cookieHeader = null;
+            for (String loginPath : loginPaths) {
+                ResponseEntity<Map> loginResp = restTemplate.exchange(
+                        base + loginPath,
+                        HttpMethod.POST,
+                        new HttpEntity<>(body, loginHeaders),
+                        Map.class
+                );
+                List<String> setCookies = loginResp.getHeaders().get(HttpHeaders.SET_COOKIE);
+                if (setCookies != null && !setCookies.isEmpty()) {
+                    // Cookie header: name=value only; Set-Cookie can include Path, HttpOnly, etc.
+                    cookieHeader = setCookies.stream()
+                            .map(s -> s.contains(";") ? s.substring(0, s.indexOf(';')).trim() : s.trim())
+                            .collect(Collectors.joining("; "));
+                    break;
+                }
+            }
+            if (cookieHeader == null || cookieHeader.isBlank()) {
+                log.warn("UniFi login returned no cookie from any path. Check credentials and use-unifi-os.");
                 return null;
             }
-            String cookieHeader = cookies.stream().collect(Collectors.joining("; "));
 
             HttpHeaders getHeaders = new HttpHeaders();
             getHeaders.set(HttpHeaders.COOKIE, cookieHeader);
@@ -95,6 +106,7 @@ public class UnifiService {
             );
             Map<String, Object> data = clientsResp.getBody();
             if (data == null || !(data.get("data") instanceof List)) {
+                log.warn("UniFi clients response missing data list. Status={}, body={}", clientsResp.getStatusCode(), data);
                 return null;
             }
             @SuppressWarnings("unchecked")
