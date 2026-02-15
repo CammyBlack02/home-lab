@@ -24,9 +24,14 @@ import java.util.stream.Collectors;
 public class UnifiService {
 
     private static final Logger log = LoggerFactory.getLogger(UnifiService.class);
+    private static final long SESSION_CACHE_MS = 8 * 60 * 1000; // 8 minutes – avoid login on every poll / rate limit
 
     private final HomelabProperties properties;
     private final RestTemplate restTemplate;
+
+    private volatile String cachedCookie;
+    private volatile String cachedCsrf;
+    private volatile long cacheExpiresAt;
 
     public UnifiService(HomelabProperties properties) {
         this.properties = properties;
@@ -65,53 +70,58 @@ public class UnifiService {
             return null;
         }
         String base = u.getBaseUrl().replaceAll("/$", "");
-        log.info("UniFi: attempting login to {} (use-unifi-os={})", base, u.isUseUnifiOs());
         String clientsPath = u.isUseUnifiOs() ? "/proxy/network/api/s/default/stat/sta" : "/api/s/default/stat/sta";
 
         try {
-            HttpHeaders loginHeaders = new HttpHeaders();
-            loginHeaders.setContentType(MediaType.APPLICATION_JSON);
-            Map<String, String> body = Map.of("username", u.getUsername(), "password", u.getPassword());
-
-            // UniFi OS: try /api/auth/login first, then /proxy/network/api/auth/login if no cookie
-            String[] loginPaths = u.isUseUnifiOs()
-                    ? new String[]{"/api/auth/login", "/proxy/network/api/auth/login"}
-                    : new String[]{"/api/login"};
             String cookieHeader = null;
             String csrfToken = null;
-            for (String loginPath : loginPaths) {
-                ResponseEntity<String> loginRespStr;
-                try {
-                    loginRespStr = restTemplate.exchange(
-                            base + loginPath,
-                            HttpMethod.POST,
-                            new HttpEntity<>(body, loginHeaders),
-                            String.class
-                    );
-                } catch (Exception e) {
-                    log.warn("UniFi login request failed for {}: {}", base + loginPath, e.getMessage());
-                    continue;
-                }
-                HttpHeaders respHeaders = loginRespStr.getHeaders();
-                List<String> setCookies = respHeaders.get(HttpHeaders.SET_COOKIE);
-                if (setCookies == null) setCookies = respHeaders.get("Set-Cookie");
-                if (setCookies == null) setCookies = respHeaders.get("set-cookie");
-                if (setCookies != null && !setCookies.isEmpty()) {
-                    // Cookie header: name=value only; UDR may send duplicate TOKEN, keep last per name
-                    Map<String, String> cookiePairs = new LinkedHashMap<>();
-                    for (String s : setCookies) {
-                        String nv = s.contains(";") ? s.substring(0, s.indexOf(';')).trim() : s.trim();
-                        int eq = nv.indexOf('=');
-                        if (eq > 0) cookiePairs.put(nv.substring(0, eq).trim(), nv.substring(eq + 1).trim());
+            long now = System.currentTimeMillis();
+
+            if (cachedCookie != null && now < cacheExpiresAt) {
+                cookieHeader = cachedCookie;
+                csrfToken = cachedCsrf;
+            }
+            if (cookieHeader == null || cookieHeader.isBlank()) {
+                log.info("UniFi: attempting login to {} (use-unifi-os={})", base, u.isUseUnifiOs());
+                HttpHeaders loginHeaders = new HttpHeaders();
+                loginHeaders.setContentType(MediaType.APPLICATION_JSON);
+                Map<String, String> body = Map.of("username", u.getUsername(), "password", u.getPassword());
+                String[] loginPaths = u.isUseUnifiOs()
+                        ? new String[]{"/api/auth/login", "/proxy/network/api/auth/login"}
+                        : new String[]{"/api/login"};
+                for (String loginPath : loginPaths) {
+                    try {
+                        ResponseEntity<String> loginRespStr = restTemplate.exchange(
+                                base + loginPath,
+                                HttpMethod.POST,
+                                new HttpEntity<>(body, loginHeaders),
+                                String.class
+                        );
+                        HttpHeaders respHeaders = loginRespStr.getHeaders();
+                        List<String> setCookies = respHeaders.get(HttpHeaders.SET_COOKIE);
+                        if (setCookies == null) setCookies = respHeaders.get("Set-Cookie");
+                        if (setCookies == null) setCookies = respHeaders.get("set-cookie");
+                        if (setCookies != null && !setCookies.isEmpty()) {
+                            Map<String, String> cookiePairs = new LinkedHashMap<>();
+                            for (String s : setCookies) {
+                                String nv = s.contains(";") ? s.substring(0, s.indexOf(';')).trim() : s.trim();
+                                int eq = nv.indexOf('=');
+                                if (eq > 0) cookiePairs.put(nv.substring(0, eq).trim(), nv.substring(eq + 1).trim());
+                            }
+                            cookieHeader = cookiePairs.entrySet().stream()
+                                    .map(e -> e.getKey() + "=" + e.getValue())
+                                    .collect(Collectors.joining("; "));
+                            csrfToken = respHeaders.getFirst("X-CSRF-Token");
+                            if (csrfToken == null) csrfToken = respHeaders.getFirst("X-Updated-Csrf-Token");
+                            cachedCookie = cookieHeader;
+                            cachedCsrf = csrfToken;
+                            cacheExpiresAt = now + SESSION_CACHE_MS;
+                            log.info("UniFi login ok, session cached for {} min", SESSION_CACHE_MS / 60000);
+                            break;
+                        }
+                    } catch (Exception e) {
+                        log.warn("UniFi login request failed for {}: {}", base + loginPath, e.getMessage());
                     }
-                    cookieHeader = cookiePairs.entrySet().stream()
-                            .map(e -> e.getKey() + "=" + e.getValue())
-                            .collect(Collectors.joining("; "));
-                    // UniFi OS may require CSRF token on subsequent requests
-                    csrfToken = respHeaders.getFirst("X-CSRF-Token");
-                    if (csrfToken == null) csrfToken = respHeaders.getFirst("X-Updated-Csrf-Token");
-                    log.info("UniFi login ok, cookie present, csrf={}", csrfToken != null);
-                    break;
                 }
             }
             if (cookieHeader == null || cookieHeader.isBlank()) {
@@ -146,6 +156,16 @@ public class UnifiService {
                     "total", devices.size(),
                     "timestamp", System.currentTimeMillis()
             );
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 403 || e.getStatusCode().value() == 401) {
+                cachedCookie = null;
+                cachedCsrf = null;
+                cacheExpiresAt = 0;
+                log.warn("UniFi session rejected ({}), cache cleared. Will re-login on next request.", e.getStatusCode());
+            } else {
+                log.warn("UniFi request failed: {}", e.getMessage());
+            }
+            return null;
         } catch (Exception e) {
             log.warn("UniFi request failed: {}", e.getMessage());
             return null;
