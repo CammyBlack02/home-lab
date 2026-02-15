@@ -300,14 +300,14 @@ public class GoveeService {
                 String device = (String) dev.get("device");
                 String model = (String) dev.get("model");
                 String name = (String) dev.get("deviceName");
-                Boolean controllable = (Boolean) dev.get("controllable");
                 Object supportCmds = dev.get("supportCmds");
+                boolean controllable = isControllable(dev.get("controllable"), supportCmds);
                 out.add(Map.of(
                         "device", device != null ? device : "",
                         "model", model != null ? model : "",
                         "name", name != null ? name : (model != null ? model : "—"),
                         "type", type,
-                        "controllable", Boolean.TRUE.equals(controllable),
+                        "controllable", controllable,
                         "supportCmds", supportCmds instanceof List ? supportCmds : List.of()
                 ));
             }
@@ -316,5 +316,13 @@ public class GoveeService {
             log.debug("Govee {} fetch failed: {}", type, e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    /** True if controllable is Boolean true, string "true", or device has supportCmds. */
+    private static boolean isControllable(Object controllable, Object supportCmds) {
+        if (Boolean.TRUE.equals(controllable)) return true;
+        if (controllable instanceof String && "true".equalsIgnoreCase((String) controllable)) return true;
+        if (supportCmds instanceof List && !((List<?>) supportCmds).isEmpty()) return true;
+        return false;
     }
 }
