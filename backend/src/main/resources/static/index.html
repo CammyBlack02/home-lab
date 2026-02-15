@@ -46,6 +46,15 @@
                 rgba(0, 0, 0, 0.12) 1px,
                 rgba(0, 0, 0, 0.12) 2px
             );
+            background-size: 100% 2px;
+            animation: matrix-scanline 3s linear infinite;
+        }
+        @keyframes matrix-scanline {
+            from { background-position: 0 0; }
+            to { background-position: 0 2px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            [data-theme="matrix"] body::after { animation: none; }
         }
         [data-theme="matrix"] .card { box-shadow: 0 0 12px rgba(0,255,65,0.08); }
         [data-theme="matrix"] .card:hover { box-shadow: 0 0 16px rgba(0,255,65,0.2); }
