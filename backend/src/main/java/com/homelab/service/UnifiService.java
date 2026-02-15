@@ -41,8 +41,6 @@ public class UnifiService {
                     .setConnectionManager(cm)
                     .build();
             HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
-            factory.setConnectTimeout(5000);   // 5 seconds, milliseconds
-            factory.setReadTimeout(10000);    // 10 seconds, milliseconds
             return new RestTemplate(factory);
         } catch (Exception e) {
             return new RestTemplate();
