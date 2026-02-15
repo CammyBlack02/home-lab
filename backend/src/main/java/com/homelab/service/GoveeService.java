@@ -278,13 +278,18 @@ public class GoveeService {
                 return Collections.emptyList();
             }
             Object data = body.get("data");
-            if (!(data instanceof Map)) {
-                log.warn("Govee {}: no data object", type);
-                return Collections.emptyList();
+            Object devices = null;
+            if (data instanceof Map) {
+                devices = ((Map<?, ?>) data).get("devices");
+                if (devices == null) devices = ((Map<?, ?>) data).get("deviceList");
+            } else if (data instanceof List) {
+                devices = data;
             }
-            Object devices = ((Map<?, ?>) data).get("devices");
+            if (devices == null && body.containsKey("devices")) {
+                devices = body.get("devices");
+            }
             if (!(devices instanceof List)) {
-                log.warn("Govee {}: no devices array (data keys: {})", type, data instanceof Map ? ((Map<?, ?>) data).keySet() : "?");
+                log.warn("Govee {}: no devices array (body keys: {}, data type: {})", type, body.keySet(), data == null ? "null" : data.getClass().getSimpleName());
                 return Collections.emptyList();
             }
 
