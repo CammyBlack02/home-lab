@@ -25,8 +25,11 @@ import java.util.*;
 public class GoveeService {
 
     private static final Logger log = LoggerFactory.getLogger(GoveeService.class);
-    private static final String LIGHTS_URL = "https://developer-api.govee.com/v1/devices";
-    private static final String APPLIANCES_URL = "https://developer-api.govee.com/v1/appliance/devices";
+    /** Current Govee Open API – single call for all devices and capabilities. */
+    private static final String OPENAPI_DEVICES_URL = "https://openapi.api.govee.com/router/api/v1/user/devices";
+    /** Legacy endpoints (fallback if openapi fails). */
+    private static final String LEGACY_LIGHTS_URL = "https://developer-api.govee.com/v1/devices";
+    private static final String LEGACY_APPLIANCES_URL = "https://developer-api.govee.com/v1/appliance/devices";
     private static final String LAN_MULTICAST = "239.255.255.250";
     private static final int LAN_MULTICAST_PORT = 4001;
     private static final int LAN_LISTEN_PORT = 4002;
@@ -65,16 +68,22 @@ public class GoveeService {
         List<Map<String, Object>> allDevices = new ArrayList<>();
         Set<String> seenDeviceIds = new HashSet<>();
 
-        // Cloud API
+        // Cloud API (try current Open API first, then legacy)
         if (g.getApiKey() != null && !g.getApiKey().isBlank()) {
             try {
                 HttpHeaders headers = new HttpHeaders();
                 headers.set("Govee-API-Key", g.getApiKey());
+                headers.set("Content-Type", "application/json");
                 HttpEntity<Void> entity = new HttpEntity<>(headers);
-                List<Map<String, Object>> lights = fetchDevicesCloud(LIGHTS_URL, entity, "light");
-                if (lights != null) for (Map<String, Object> d : lights) { addIfNew(d, allDevices, seenDeviceIds); }
-                List<Map<String, Object>> appliances = fetchDevicesCloud(APPLIANCES_URL, entity, "appliance");
-                if (appliances != null) for (Map<String, Object> d : appliances) { addIfNew(d, allDevices, seenDeviceIds); }
+                List<Map<String, Object>> cloud = fetchDevicesCloud(OPENAPI_DEVICES_URL, entity, "cloud");
+                if (cloud == null || cloud.isEmpty()) {
+                    List<Map<String, Object>> lights = fetchDevicesCloud(LEGACY_LIGHTS_URL, entity, "light");
+                    if (lights != null) for (Map<String, Object> d : lights) addIfNew(d, allDevices, seenDeviceIds);
+                    List<Map<String, Object>> appliances = fetchDevicesCloud(LEGACY_APPLIANCES_URL, entity, "appliance");
+                    if (appliances != null) for (Map<String, Object> d : appliances) addIfNew(d, allDevices, seenDeviceIds);
+                } else {
+                    for (Map<String, Object> d : cloud) addIfNew(d, allDevices, seenDeviceIds);
+                }
             } catch (Exception e) {
                 log.warn("Govee cloud API failed: {}", e.getMessage());
             }
