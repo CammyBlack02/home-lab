@@ -18,6 +18,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.UUID;
 
 /**
  * Fetches Govee devices: cloud API (if API key set) and/or LAN discovery (UDP multicast per Govee WLAN guide).
@@ -119,51 +120,87 @@ public class GoveeService {
 
     /**
      * Send control command to a Govee device (Control You Device API).
-     * See https://developer.govee.com/reference/control-you-devices
-     * @param device device id (e.g. MAC)
-     * @param model model (e.g. H6089)
-     * @param cmdName "turn" | "brightness" | "color" | "colorTem"
-     * @param cmdValue for turn: "on"|"off"; brightness: 0-100; color: {r,g,b}; colorTem: 2000-9000
-     * @return true if command accepted (code 200)
+     * Open API format: POST with requestId + payload (sku, device, capability: type/instance/value).
+     * See https://developer.govee.com/reference/control-you-devices – on_off uses devices.capabilities.on_off, powerSwitch, value 0|1.
+     * Falls back to legacy (PUT device/model/cmd) if Open API fails.
      */
     @SuppressWarnings("unchecked")
-    public boolean control(String device, String model, String cmdName, Object cmdValue) {
+    public Map<String, Object> control(String device, String model, String cmdName, Object cmdValue) {
+        Map<String, Object> out = new HashMap<>();
+        out.put("success", false);
         HomelabProperties.Govee g = properties.getGovee();
         if (!g.isEnabled() || g.getApiKey() == null || g.getApiKey().isBlank()) {
-            return false;
+            out.put("message", "Govee disabled or no API key");
+            return out;
         }
         if (device == null || device.isBlank() || model == null || model.isBlank() || cmdName == null || cmdName.isBlank()) {
-            return false;
+            out.put("message", "Missing device, model, or command");
+            return out;
         }
-        Map<String, Object> cmd = new HashMap<>();
-        cmd.put("name", cmdName);
-        cmd.put("value", cmdValue != null ? cmdValue : "on");
-        Map<String, Object> body = new HashMap<>();
-        body.put("device", device);
-        body.put("model", model);
-        body.put("cmd", cmd);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Govee-API-Key", g.getApiKey());
         headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        String lastMessage = null;
 
-        try {
-            ResponseEntity<Map> response = restTemplate.exchange(OPENAPI_CONTROL_URL, HttpMethod.PUT, entity, Map.class);
-            Map<String, Object> res = response.getBody();
-            if (res != null && isCode200(res.get("code"))) {
-                return true;
+        // Open API: POST with requestId + payload (sku, device, capability)
+        if ("turn".equals(cmdName)) {
+            int value = "on".equals(String.valueOf(cmdValue).toLowerCase()) ? 1 : 0;
+            Map<String, Object> capability = new HashMap<>();
+            capability.put("type", "devices.capabilities.on_off");
+            capability.put("instance", "powerSwitch");
+            capability.put("value", value);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("sku", model);
+            payload.put("device", device);
+            payload.put("capability", capability);
+            Map<String, Object> openBody = new HashMap<>();
+            openBody.put("requestId", UUID.randomUUID().toString());
+            openBody.put("payload", payload);
+            HttpEntity<Map<String, Object>> openEntity = new HttpEntity<>(openBody, headers);
+            try {
+                ResponseEntity<Map> response = restTemplate.exchange(OPENAPI_CONTROL_URL, HttpMethod.POST, openEntity, Map.class);
+                Map<String, Object> res = response.getBody();
+                if (res != null && isCode200(res.get("code"))) {
+                    out.put("success", true);
+                    return out;
+                }
+                if (res != null) {
+                    lastMessage = String.valueOf(res.get("message"));
+                    log.warn("Govee control (openapi): code={}, message={}", res.get("code"), lastMessage);
+                }
+            } catch (Exception e) {
+                lastMessage = e.getMessage();
+                log.warn("Govee control (openapi) failed: {}", lastMessage);
             }
-            if (res != null) {
-                log.warn("Govee control failed: code={}, message={}", res.get("code"), res.get("message"));
-            }
-            ResponseEntity<Map> legacy = restTemplate.exchange(LEGACY_CONTROL_URL, HttpMethod.PUT, entity, Map.class);
-            Map<String, Object> leg = legacy.getBody();
-            return leg != null && isCode200(leg.get("code"));
-        } catch (Exception e) {
-            log.warn("Govee control failed: {}", e.getMessage());
-            return false;
         }
+
+        // Legacy: PUT with device, model, cmd (name/value)
+        Map<String, Object> cmd = new HashMap<>();
+        cmd.put("name", cmdName);
+        cmd.put("value", cmdValue != null ? cmdValue : "on");
+        Map<String, Object> legacyBody = new HashMap<>();
+        legacyBody.put("device", device);
+        legacyBody.put("model", model);
+        legacyBody.put("cmd", cmd);
+        HttpEntity<Map<String, Object>> legacyEntity = new HttpEntity<>(legacyBody, headers);
+        try {
+            ResponseEntity<Map> legacy = restTemplate.exchange(LEGACY_CONTROL_URL, HttpMethod.PUT, legacyEntity, Map.class);
+            Map<String, Object> leg = legacy.getBody();
+            if (leg != null && isCode200(leg.get("code"))) {
+                out.put("success", true);
+                return out;
+            }
+            if (leg != null) {
+                lastMessage = String.valueOf(leg.get("message"));
+                log.warn("Govee control (legacy) failed: code={}, message={}", leg.get("code"), lastMessage);
+            }
+        } catch (Exception e) {
+            if (lastMessage == null) lastMessage = e.getMessage();
+            log.warn("Govee control (legacy) failed: {}", e.getMessage());
+        }
+        out.put("message", lastMessage != null && !lastMessage.isEmpty() ? lastMessage : "Control failed (check API key and device support)");
+        return out;
     }
 
     /**

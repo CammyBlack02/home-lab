@@ -47,10 +47,10 @@ public class GoveeController {
         if (name == null) {
             return Map.of("error", true, "message", "Missing cmd.name");
         }
-        boolean ok = goveeService.control(device, model, name, value);
-        if (ok) {
+        Map<String, Object> result = goveeService.control(device, model, name, value);
+        if (Boolean.TRUE.equals(result.get("success"))) {
             return Map.of("success", true);
         }
-        return Map.of("error", true, "message", "Control failed (check API key and device support)");
+        return Map.of("error", true, "message", result.get("message") != null ? result.get("message") : "Control failed");
     }
 }
