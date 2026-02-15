@@ -221,28 +221,26 @@
             document.getElementById('modal').classList.remove('open');
         }
 
-        async function load() {
+        const cardIds = { server: 'server-stats', desktop: 'desktop-stats', devices: 'devices', speed: 'speed-test' };
+        async function loadOne(path, key, render) {
             try {
-                const [server, desktop, devices, speed] = await Promise.all([
-                    fetchJson('/api/server-stats'),
-                    fetchJson('/api/desktop-stats'),
-                    fetchJson('/api/devices'),
-                    fetchJson('/api/speed-test')
-                ]);
-                lastData.server = server;
-                lastData.desktop = desktop;
-                lastData.devices = devices;
-                lastData.speed = speed;
-                document.getElementById('server-stats').innerHTML = renderServerStats(server);
-                document.getElementById('desktop-stats').innerHTML = renderDesktopStats(desktop);
-                document.getElementById('devices').innerHTML = renderDevices(devices);
-                document.getElementById('speed-test').innerHTML = renderSpeedTest(speed);
+                const data = await fetchJson(path);
+                lastData[key] = data;
+                const target = document.getElementById(cardIds[key]);
+                if (target) target.innerHTML = render(data);
             } catch (e) {
-                document.getElementById('server-stats').innerHTML = '<span class="error">' + e.message + '</span>';
-                document.getElementById('desktop-stats').innerHTML = '<span class="error">' + e.message + '</span>';
-                document.getElementById('devices').innerHTML = '<span class="error">' + e.message + '</span>';
-                document.getElementById('speed-test').innerHTML = '<span class="error">' + e.message + '</span>';
+                lastData[key] = null;
+                const target = document.getElementById(cardIds[key]);
+                if (target) target.innerHTML = '<span class="error">' + e.message + '</span>';
             }
+        }
+        async function load() {
+            await Promise.all([
+                loadOne('/api/server-stats', 'server', renderServerStats),
+                loadOne('/api/desktop-stats', 'desktop', renderDesktopStats),
+                loadOne('/api/devices', 'devices', renderDevices),
+                loadOne('/api/speed-test', 'speed', renderSpeedTest)
+            ]);
         }
 
         load();

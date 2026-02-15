@@ -1,19 +1,25 @@
 package com.homelab.service;
 
 import com.homelab.config.HomelabProperties;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.Map;
 
 @Service
 public class AgentService {
 
     private final HomelabProperties properties;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
-    public AgentService(HomelabProperties properties) {
+    public AgentService(HomelabProperties properties, RestTemplateBuilder builder) {
         this.properties = properties;
+        this.restTemplate = builder
+                .setConnectTimeout(Duration.ofSeconds(3))
+                .setReadTimeout(Duration.ofSeconds(4))
+                .build();
     }
 
     /**

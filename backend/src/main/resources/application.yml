@@ -5,13 +5,13 @@ spring:
   application:
     name: home-lab-backend
 
-# Phase 2: optional – set in application-local.yml or env (do not commit secrets)
+# Agent URLs – set for your setup (override in application-local.yml or env to avoid committing)
 homelab:
-  server-agent-url:    # e.g. http://192.168.1.x:5000 – leave blank for mock
-  desktop-agent-url: http://192.168.0.235:5001
+  server-agent-url: http://localhost:5000    # when backend runs on server; use http://192.168.3.98:5000 when on Bazzite
+  desktop-agent-url: http://192.168.0.235:5001  # when backend runs on Bazzite; use Bazzite IP when backend on server
   unifi:
     enabled: false
-    base-url:         # e.g. https://192.168.1.1:8443
+    base-url:
     username:
     password:
-    use-unifi-os: false   # true for UDM/UniFi OS; false for UniFi Network Application
+    use-unifi-os: false
