@@ -62,7 +62,23 @@ mvn clean package -DskipTests
 java -jar target/home-lab-backend-0.1.0-SNAPSHOT.jar
 ```
 
+### Speed test (real results)
+
+The dashboard shows live speed test results when the **Ookla Speedtest CLI** is installed on the machine running the backend (e.g. your server).
+
+1. **Install** (Ubuntu/Debian):
+   ```bash
+   # See https://www.speedtest.net/apps/cli – or:
+   sudo apt-get install curl
+   curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | sudo bash
+   sudo apt-get install speedtest
+   ```
+
+2. **Verify:** `speedtest -f json` should output JSON with `ping`, `download`, `upload`.
+
+3. The backend runs `speedtest -f json` when the Speed test card is loaded; the result is **cached for 10 minutes** so it doesn’t run on every refresh. If the CLI is missing or fails, the card shows an error message.
+
 ## Next steps (you)
 
-- Add Govee endpoints and scheduled speed test (Phase 3).
+- Add Govee endpoints (Phase 3).
 - Store secrets in env vars or `application-local.yml` (not committed).
