@@ -440,6 +440,7 @@
         <label><input type="checkbox" data-card="devices-card" checked> Devices</label>
         <label><input type="checkbox" data-card="speed-test-card" checked> Speed test</label>
         <label><input type="checkbox" data-card="govee-devices-card" checked> Govee</label>
+        <label><input type="checkbox" data-card="tailscale-devices-card" checked> Tailscale</label>
                 </div>
             </span>
         </div>
@@ -470,6 +471,11 @@
             <div id="govee-devices">Loading…</div>
             <div class="hint">Click for more</div>
         </div>
+        <div class="card" id="tailscale-devices-card" data-panel="tailscale" title="Click for more">
+            <h2>Tailscale</h2>
+            <div id="tailscale-devices">Loading…</div>
+            <div class="hint">Click for more</div>
+        </div>
     </div>
 
     <div class="modal-overlay" id="modal">
@@ -489,7 +495,7 @@
         const GOVEE_VIEW_KEY = 'homelab-govee-view';
 
         const THEMES = ['default','matrix','retro','solarized','dracula','nord','amoled','light','contrast','glass','system'];
-        const PANELS = ['server','desktop','devices','speed','govee'];
+        const PANELS = ['server','desktop','devices','speed','govee','tailscale'];
 
         function resolveTheme(theme) {
             if (theme !== 'system') return theme;
@@ -569,7 +575,14 @@
             return list + `<div class="updated">${data.total ?? 0} devices · ${new Date(data.timestamp || 0).toLocaleTimeString()}</div>`;
         }
 
-        let lastData = { server: null, desktop: null, devices: null, speed: null, govee: null };
+        function renderTailscale(data) {
+            const list = (data.devices || []).map(d =>
+                `<div class="row"><span><span class="status ${d.status}"></span>${d.name}</span><span>${d.ip}</span></div>`
+            ).join('');
+            return list + `<div class="updated">${data.total ?? 0} devices · ${new Date(data.timestamp || 0).toLocaleTimeString()}</div>`;
+        }
+
+        let lastData = { server: null, desktop: null, devices: null, speed: null, govee: null, tailscale: null };
 
         function openDetail(panel) {
             const modal = document.getElementById('modal');
@@ -732,6 +745,17 @@
                     goveeControl(btn.dataset.device, btn.dataset.model, 'color', { r: parseInt(btn.dataset.r, 10), g: parseInt(btn.dataset.g, 10), b: parseInt(btn.dataset.b, 10) });
                 }));
                 body.querySelectorAll('.govee-temp').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); goveeControl(btn.dataset.device, btn.dataset.model, 'colorTem', parseInt(btn.dataset.k, 10)); }));
+            } else if (panel === 'tailscale') {
+                title.textContent = 'Tailscale – ' + (d.total || 0) + ' devices';
+                body.innerHTML = `
+                    <table>
+                        <thead><tr><th>Name</th><th>Tailscale IP</th><th>Type</th><th>Status</th></tr></thead>
+                        <tbody>
+                            ${(d.devices || []).map(dev => '<tr><td data-label="Name">' + dev.name + '</td><td data-label="Tailscale IP">' + (dev.ip || '—') + '</td><td data-label="Type">' + (dev.type || '—') + '</td><td data-label="Status"><span class="status ' + dev.status + '"></span>' + dev.status + '</td></tr>').join('')}
+                        </tbody>
+                    </table>
+                    <div class="detail-row" style="margin-top:0.5rem"><span>Last updated</span><span>${new Date(d.timestamp || 0).toLocaleString()}</span></div>
+                `;
             }
             modal.classList.add('open');
         }
@@ -759,8 +783,8 @@
             }
         }
 
-        const cardIds = { server: 'server-stats', desktop: 'desktop-stats', devices: 'devices', speed: 'speed-test', govee: 'govee-devices' };
-        const cardIdToPanel = { 'server-stats-card': 'server', 'desktop-stats-card': 'desktop', 'devices-card': 'devices', 'speed-test-card': 'speed', 'govee-devices-card': 'govee' };
+        const cardIds = { server: 'server-stats', desktop: 'desktop-stats', devices: 'devices', speed: 'speed-test', govee: 'govee-devices', tailscale: 'tailscale-devices' };
+        const cardIdToPanel = { 'server-stats-card': 'server', 'desktop-stats-card': 'desktop', 'devices-card': 'devices', 'speed-test-card': 'speed', 'govee-devices-card': 'govee', 'tailscale-devices-card': 'tailscale' };
         let refreshTimer = null;
 
         function getRefreshMs() {
@@ -798,8 +822,8 @@
 
         function applyCardVisibility() {
             let visible = [];
-            try { visible = JSON.parse(localStorage.getItem(CARDS_KEY) || '["server-stats-card","desktop-stats-card","devices-card","speed-test-card","govee-devices-card"]'); } catch (e) {}
-            const all = ['server-stats-card','desktop-stats-card','devices-card','speed-test-card','govee-devices-card'];
+            try { visible = JSON.parse(localStorage.getItem(CARDS_KEY) || '["server-stats-card","desktop-stats-card","devices-card","speed-test-card","govee-devices-card","tailscale-devices-card"]'); } catch (e) {}
+            const all = ['server-stats-card','desktop-stats-card','devices-card','speed-test-card','govee-devices-card','tailscale-devices-card'];
             all.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.toggle('hidden', !visible.includes(id));
@@ -851,7 +875,8 @@
                 loadOne('/api/desktop-stats', 'desktop', renderDesktopStats),
                 loadOne('/api/devices', 'devices', renderDevices),
                 loadOne('/api/speed-test', 'speed', renderSpeedTest),
-                loadOne('/api/govee-devices', 'govee', renderGovee)
+                loadOne('/api/govee-devices', 'govee', renderGovee),
+                loadOne('/api/tailscale-devices', 'tailscale', renderTailscale)
             ]);
             updateTabStatus();
         }
@@ -862,6 +887,7 @@
             if (lastData.desktop && lastData.desktop.error) issues++;
             if (lastData.devices && lastData.devices.error) issues++;
             if (lastData.govee && lastData.govee.error) issues++;
+            if (lastData.tailscale && lastData.tailscale.error) issues++;
             document.title = issues ? 'Home Lab (' + issues + ' issue' + (issues > 1 ? 's' : '') + ')' : 'Home Lab Dashboard';
         }
 
@@ -877,7 +903,7 @@
                 return;
             }
             const n = parseInt(e.key, 10);
-            if (n >= 1 && n <= 5) {
+            if (n >= 1 && n <= 6) {
                 openDetail(PANELS[n - 1]);
             }
         });
